@@ -36,5 +36,20 @@ public final class UserContext {
         AuthenticationDetails details = getCurrentUser();
         return details != null ? details.getLoggedInUserId() : null;
     }
+
+    public static String getUserName() {
+        AuthenticationDetails details = getCurrentUser();
+        return details != null ? details.getLoggedInUserName() : null;
+    }
+
+    public static Long getGroupPoid() {
+        AuthenticationDetails details = getCurrentUser();
+        return details != null ? details.getGroupPoid() : null;
+    }
+
+    public static Long getCompanyPoid() {
+        AuthenticationDetails details = getCurrentUser();
+        return details != null ? details.getCompanyPoid() : null;
+    }
 }
 

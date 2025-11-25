@@ -11,6 +11,8 @@ public class AuthenticationDetails implements Serializable {
     private String loggedInUserName;
     private String loggedInUserEmail;
     private String loggedInUserRole;
+    private Long groupPoid;
+    private Long companyPoid;
 
     public Long getLoggedInUserPoid() {
         return loggedInUserPoid;
@@ -50,6 +52,22 @@ public class AuthenticationDetails implements Serializable {
 
     public void setLoggedInUserRole(String loggedInUserRole) {
         this.loggedInUserRole = loggedInUserRole;
+    }
+
+    public Long getGroupPoid() {
+        return groupPoid;
+    }
+
+    public void setGroupPoid(Long groupPoid) {
+        this.groupPoid = groupPoid;
+    }
+
+    public Long getCompanyPoid() {
+        return companyPoid;
+    }
+
+    public void setCompanyPoid(Long companyPoid) {
+        this.companyPoid = companyPoid;
     }
 }
 

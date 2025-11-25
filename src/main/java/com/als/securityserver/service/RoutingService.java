@@ -1,5 +1,6 @@
 package com.als.securityserver.service;
 
+import com.als.securityserver.util.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.env.Environment;
@@ -45,6 +46,7 @@ public class RoutingService {
         HttpMethod httpMethod = HttpMethod.valueOf(request.getMethod());
 
         HttpHeaders headers = copyRequestHeaders(request);
+        addExtraHeaders(headers);
         headers.remove(HttpHeaders.HOST);
 
         HttpEntity<byte[]> httpEntity = new HttpEntity<>(body != null && body.length > 0 ? body : null, headers);
@@ -81,6 +83,16 @@ public class RoutingService {
             headers.put(headerName, valueList);
         }
         return new HttpHeaders(new MultiValueMapAdapter<>(headers));
+    }
+
+    private void addExtraHeaders(HttpHeaders headers) {
+        headers.add("X-User-Name", UserContext.getUserName());
+        headers.add("X-User-Poid", UserContext.getUserPoid() != null ? UserContext.getUserPoid().toString() : null);
+        headers.add("X-User-Id", UserContext.getUserId());
+        headers.add("X-User-Email", UserContext.getUserEmail());
+        headers.add("X-User-Role", UserContext.getUserRole());
+        headers.add("X-Group-Poid", UserContext.getGroupPoid() != null ? UserContext.getGroupPoid().toString() : null);
+        headers.add("X-Company-Poid", UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid().toString() : null);
     }
 }
 

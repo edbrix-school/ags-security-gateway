@@ -106,6 +106,14 @@ try {
         return getClaims(token, jwtConfig.getSecret()).get("userPoid", Long.class);
     }
 
+    public Long getGroupPoidFromToken(String token) {
+        return getClaims(token, jwtConfig.getSecret()).get("groupPoid", Long.class);
+    }
+
+    public Long getCompanyPoidFromToken(String token) {
+        return getClaims(token, jwtConfig.getSecret()).get("companyPoid", Long.class);
+    }
+
     public Date getExpirationDate(String token) {
         return getClaims(token, jwtConfig.getSecret()).getExpiration();
     }

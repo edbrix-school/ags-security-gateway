@@ -68,6 +68,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         authenticationDetails.setLoggedInUserName(jwtUtils.getUserNameFromToken(token));
                         authenticationDetails.setLoggedInUserId(jwtUtils.getUserIdFromToken(token));
                         authenticationDetails.setLoggedInUserPoid(jwtUtils.getUserPoidFromToken(token));
+                        authenticationDetails.setGroupPoid(jwtUtils.getGroupPoidFromToken(token));
+                        authenticationDetails.setCompanyPoid(jwtUtils.getCompanyPoidFromToken(token));
                         authenticationDetails.setLoggedInUserRole(authorities.stream()
                                 .findFirst()
                                 .map(SimpleGrantedAuthority::getAuthority)
