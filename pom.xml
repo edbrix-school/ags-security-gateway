@@ -8,11 +8,11 @@
 		<version>3.5.7</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.als</groupId>
-	<artifactId>securityserver</artifactId>
+	<groupId>com.asg</groupId>
+	<artifactId>security-gateway</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>security-server</name>
-	<description>Stand alone security server</description>
+	<name>security-gateway</name>
+	<description>Stand alone security gateway</description>
 	<url/>
 	<licenses>
 		<license/>
