@@ -54,13 +54,12 @@ public class RoutingService {
     }
 
     public String resolveServiceUrl(String service) {
-        String key = service.replace('-', '_').replace('/', '_').toUpperCase(Locale.ROOT) + "_SERVICE_URL";
-        return environment.getProperty(key);
+        return environment.getProperty(service + ".url");
     }
 
     private String extractForwardPath(HttpServletRequest request, String service) {
         String requestUri = request.getRequestURI();
-        String prefix = "/security-server/als/api/" + service;
+        String prefix = "/api/" + service;
         String remainder = requestUri.length() > prefix.length()
                 ? requestUri.substring(prefix.length())
                 : "";

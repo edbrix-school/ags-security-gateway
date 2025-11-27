@@ -23,7 +23,7 @@ public class ProxyController {
         this.routingService = routingService;
     }
 
-    @RequestMapping("/als/api/{service}/**")
+    @RequestMapping("/api/{service}/**")
     public ResponseEntity<?> proxy(@PathVariable("service") String service,
                                    HttpServletRequest request,
                                    @RequestBody(required = false) byte[] body) throws IOException {

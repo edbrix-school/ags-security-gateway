@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 "/sso",
                                 "/actuator/**"
                         ).permitAll()
-                        .requestMatchers("/als/api/**").authenticated()
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
