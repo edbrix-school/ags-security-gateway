@@ -59,7 +59,7 @@ public class RoutingService {
 
     private String extractForwardPath(HttpServletRequest request, String service) {
         String requestUri = request.getRequestURI();
-        String prefix = "/" + service + "/api";
+        String prefix = "/asg/" + service + "/api";
         String remainder = requestUri.length() > prefix.length()
                 ? requestUri.substring(prefix.length())
                 : "";
