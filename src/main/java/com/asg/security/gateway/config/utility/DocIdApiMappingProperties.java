@@ -5,7 +5,9 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -14,6 +16,6 @@ import java.util.Map;
 @Setter
 public class DocIdApiMappingProperties {
     private Map<String, String> mappings = new HashMap<>();
-    private String special;
+    private List<String> special = new ArrayList<>();
     private String validDocIdFormatRegexp;
 }

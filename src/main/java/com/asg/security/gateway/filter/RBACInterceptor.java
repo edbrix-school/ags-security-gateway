@@ -96,8 +96,11 @@ public class RBACInterceptor implements HandlerInterceptor {
 
             AntPathMatcher pathMatcher = new AntPathMatcher();
             
-            // Special handling for document/searchable-fields endpoint
-            if (pathMatcher.match(docIdApiMappingProperties.getSpecial(), requestUri)) {
+            // Special handling for special endpoints
+            boolean isSpecialEndpoint = docIdApiMappingProperties.getSpecial().stream()
+                    .anyMatch(pattern -> pathMatcher.match(pattern, requestUri));
+            
+            if (isSpecialEndpoint) {
 
                 // For searchable-fields, only VIEW action is allowed
                 if (!UserRolesRightsEnum.VIEW.toString().equals(action) ) {
