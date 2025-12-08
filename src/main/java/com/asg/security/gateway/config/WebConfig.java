@@ -54,7 +54,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/v1/dashboard/**",
                         "/api/v1/documentLock/**",
                         "/api/v1/common/**",
-                        "/api/v1/user-preference/**"
+                        "/api/v1/user-preference/**",
+                        "/asg/common-services/api/**"
                 );
     }
 }
