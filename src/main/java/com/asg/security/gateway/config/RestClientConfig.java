@@ -1,5 +1,6 @@
 package com.asg.security.gateway.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -8,11 +9,17 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestClientConfig {
 
+    @Value("${gateway.rest.connect-timeout:30000}")
+    private int connectTimeout;
+
+    @Value("${gateway.rest.read-timeout:300000}")
+    private int readTimeout;
+
     @Bean
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10_000);
-        factory.setReadTimeout(30_000);
+        factory.setConnectTimeout(connectTimeout);
+        factory.setReadTimeout(readTimeout);
         return new RestTemplate(factory);
     }
 }
