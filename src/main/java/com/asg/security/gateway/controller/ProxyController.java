@@ -1,5 +1,6 @@
 package com.asg.security.gateway.controller;
 
+import com.asg.security.gateway.filter.CachedBodyHttpServletRequest;
 import com.asg.security.gateway.service.RoutingService;
 import com.asg.security.gateway.util.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +35,16 @@ public class ProxyController {
     public ResponseEntity<?> proxy(@PathVariable("service") String service,
                                    HttpServletRequest request,
                                    @RequestBody(required = false) byte[] body) throws IOException {
-        byte[] requestBody = body != null ? body : StreamUtils.copyToByteArray(request.getInputStream());
+        byte[] requestBody;
+        
+        // If request is a cached body request (multipart), use the cached body
+        if (request instanceof CachedBodyHttpServletRequest cachedRequest) {
+            requestBody = cachedRequest.getCachedBody();
+        } else if (body != null) {
+            requestBody = body;
+        } else {
+            requestBody = StreamUtils.copyToByteArray(request.getInputStream());
+        }
 
         try {
             ResponseEntity<byte[]> response = routingService.forward(service, request, requestBody);
