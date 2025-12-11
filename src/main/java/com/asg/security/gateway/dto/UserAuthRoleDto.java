@@ -1,5 +1,4 @@
-package com.alsharif.securityserver.dto;
-
+package com.asg.security.gateway.dto;
 import lombok.Data;
 
 import java.io.Serializable;

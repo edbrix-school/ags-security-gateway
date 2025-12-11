@@ -7,8 +7,8 @@ import com.asg.security.gateway.repository.RoleRepository;
 import com.asg.security.gateway.repository.UserAuthRoleRepository;
 import com.asg.security.gateway.repository.UserRoleRepository;
 import org.springframework.stereotype.Service;
-import com.alsharif.securityserver.dto.UserAuthRoleDto;
-import com.alsharif.securityserver.dto.UserRoleDto;
+import com.asg.security.gateway.dto.UserAuthRoleDto;
+import com.asg.security.gateway.dto.UserRoleDto;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 

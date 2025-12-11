@@ -1,4 +1,4 @@
-package com.alsharif.securityserver.dto;
+package com.asg.security.gateway.dto;
 
 import java.sql.Date;
 
