@@ -34,5 +34,10 @@ public final class ApiResponse {
     public static ResponseEntity<?> internalServerError(String message) {
         return error(message, HttpStatus.INTERNAL_SERVER_ERROR.value());
     }
+
+    public static ResponseEntity<?> badRequest(String message) {
+        return error(message, HttpStatus.BAD_REQUEST.value());
+    }
+
 }
 
