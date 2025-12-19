@@ -29,7 +29,7 @@ import static com.asg.security.gateway.util.ApiResponse.*;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("/v1/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthService authService;

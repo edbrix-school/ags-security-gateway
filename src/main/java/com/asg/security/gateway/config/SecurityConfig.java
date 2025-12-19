@@ -40,12 +40,12 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/v1/auth/login",
-                                "/v1/auth/refresh-token",
-                                "/v1/auth/sso",
-                                "/v1/auth/forgot-password",
-                                "/v1/auth/send-otp",
-                                "/v1/auth/change-password",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh-token",
+                                "/api/v1/auth/sso",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/send-otp",
+                                "/api/v1/auth/change-password",
                                 "/actuator/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
