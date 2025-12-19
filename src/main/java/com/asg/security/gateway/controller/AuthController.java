@@ -27,9 +27,9 @@ import java.util.Map;
 import static com.asg.security.gateway.util.ApiResponse.*;
 
 @RestController
-@RequestMapping
 @RequiredArgsConstructor
 @Slf4j
+@RequestMapping("/v1/auth")
 public class AuthController {
 
     private final AuthService authService;

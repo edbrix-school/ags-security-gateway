@@ -23,9 +23,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(rbacInterceptor)
                 .addPathPatterns(rbacServicesToValidate)
                 .excludePathPatterns(
-                        "/api/v1/task-category/subcategories/**",
-                        "/api/v1/document/details",
-                        "/api/v1/document/searchable-fields/**"
+                        "/asg/settings/api/v1/task-category/subcategories/**",
+                        "/asg/settings/api/v1/document/details",
+                        "/asg/settings/api/v1/document/searchable-fields/**"
                 );
     }
 }

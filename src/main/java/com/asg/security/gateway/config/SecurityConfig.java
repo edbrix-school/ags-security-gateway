@@ -40,9 +40,12 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/login",
-                                "/refresh-token",
-                                "/sso",
+                                "/v1/auth/login",
+                                "/v1/auth/refresh-token",
+                                "/v1/auth/sso",
+                                "/v1/auth/forgot-password",
+                                "/v1/auth/send-otp",
+                                "/v1/auth/change-password",
                                 "/actuator/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -50,11 +53,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
                                 "/swagger-resources/**",
-                                "/webjars/**",
-                                "forgot-password",
-                                "send-otp",
-                                "change-password"
-
+                                "/webjars/**"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
