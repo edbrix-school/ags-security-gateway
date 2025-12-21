@@ -103,7 +103,18 @@
 			<artifactId>json-smart</artifactId>
 			<version>2.5.1</version>
 		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.4.0-jre</version>
+            <scope>compile</scope>
+        </dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.7.0</version>
+		</dependency>
+    </dependencies>
 
 	<build>
 		<plugins>
@@ -122,4 +133,15 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<profile>
+			<id>qa</id>
+			<properties>
+				<spring.profiles.active>qa</spring.profiles.active>
+			</properties>
+			<build>
+				<finalName>${project.artifactId}-${project.version}-qa</finalName>
+			</build>
+		</profile>
+	</profiles>
 </project>

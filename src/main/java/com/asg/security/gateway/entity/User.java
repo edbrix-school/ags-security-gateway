@@ -1,31 +1,54 @@
 package com.asg.security.gateway.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.Data;
 
-import java.util.Date;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "GLOBAL_USERS")
+@Data
 public class User {
 
     @Id
-    @Column(name = "USER_POID")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "USER_POID", nullable = false)
     private Long userPoid;
 
-    @Column(name = "USER_ID")
+    @Column(name = "GROUP_POID", nullable = false)
+    private Long groupPoid;
+
+    @Column(name = "USER_ID", length = 20, nullable = false)
     private String userId;
 
-    @Column(name = "USER_NAME")
+    @Column(name = "USER_NAME", length = 100, nullable = false)
     private String userName;
 
-    @Column(name = "USER_EMAIL")
+    @Column(name = "USER_EMAIL", length = 50, nullable = false)
     private String email;
 
-    @Column(name = "GROUP_POID")
-    private Long groupPoid;
+    @Column(name = "PWD", length = 256)
+    private String pwd;
+
+    @Column(name = "USER_LOCKED", length = 1)
+    private String userLocked;
+
+    @Column(name = "USER_MOBILE", length = 30)
+    private String userMobile;
+
+    @Column(name = "USER_LOCKED_REASON", length = 100)
+    private String userLockedReason;
+
+    @Column(name = "RESET_PWD_NEXT_LOGIN", length = 1)
+    private String resetPasswordNextLogin;
+
+    @Column(name = "ACTIVE", length = 1)
+    private String active;
+
+    @Column(name = "DELETED", length = 1)
+    private String deleted;
 
     @Column(name = "DEFAULT_COMPANY_POID")
     private Long defaultCompanyPoid;
@@ -33,159 +56,28 @@ public class User {
     @Column(name = "DEFAULT_LOCATION_POID")
     private Long defaultLocationPoid;
 
-    @Column(name = "PWD")
-    private String pwd;
+    @Column(name = "AUTHORIZATION_LEVEL")
+    private Integer authorizationLevel;
 
-    @Column(name = "ACTIVE")
-    private String active;
-
-    @Column(name = "USER_LOCKED")
-    private String userLocked;
-
-    @Column(name = "USER_LOCKED_REASON")
-    private String userLockedReason;
-
-    @Column(name = "RESET_PWD_NEXT_LOGIN")
-    private String resetPasswordNextLogin;
+    @Column(name = "SEQNO")
+    private Integer seqno;
 
     @Column(name = "CREATED_DATE")
-    private Date createdDate;
+    private Timestamp createdDate;
+
+    @Column(name = "EXPIRY_DATE")
+    private Date expiryDate;
+
+    @Column(name = "ALLOW_OFFICE365_LOGIN", length = 1)
+    private String authenticationMethod = "N";
+
+    @Column(name = "CREATED_BY", length = 20)
+    private String createdBy;
 
     @Column(name = "LASTMODIFIED_DATE")
-    private Date lastModifiedDate;
+    private LocalDateTime lastModifiedDate;
 
-    @Column(name = "LASTMODIFIED_BY")
+    @Column(name = "LASTMODIFIED_BY", length = 20)
     private String lastModifiedBy;
-
-    @Column(name = "USER_MOBILE")
-    private String userMobile;
-
-    public Long getUserPoid() {
-        return userPoid;
-    }
-
-    public void setUserPoid(Long userPoid) {
-        this.userPoid = userPoid;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public String getUserName() {
-        return userName;
-    }
-
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public Long getGroupPoid() {
-        return groupPoid;
-    }
-
-    public void setGroupPoid(Long groupPoid) {
-        this.groupPoid = groupPoid;
-    }
-
-    public Long getDefaultCompanyPoid() {
-        return defaultCompanyPoid;
-    }
-
-    public void setDefaultCompanyPoid(Long defaultCompanyPoid) {
-        this.defaultCompanyPoid = defaultCompanyPoid;
-    }
-
-    public Long getDefaultLocationPoid() {
-        return defaultLocationPoid;
-    }
-
-    public void setDefaultLocationPoid(Long defaultLocationPoid) {
-        this.defaultLocationPoid = defaultLocationPoid;
-    }
-
-    public String getPwd() {
-        return pwd;
-    }
-
-    public void setPwd(String pwd) {
-        this.pwd = pwd;
-    }
-
-    public String getActive() {
-        return active;
-    }
-
-    public void setActive(String active) {
-        this.active = active;
-    }
-
-    public String getUserLocked() {
-        return userLocked;
-    }
-
-    public void setUserLocked(String userLocked) {
-        this.userLocked = userLocked;
-    }
-
-    public String getUserLockedReason() {
-        return userLockedReason;
-    }
-
-    public void setUserLockedReason(String userLockedReason) {
-        this.userLockedReason = userLockedReason;
-    }
-
-    public String getResetPasswordNextLogin() {
-        return resetPasswordNextLogin;
-    }
-
-    public void setResetPasswordNextLogin(String resetPasswordNextLogin) {
-        this.resetPasswordNextLogin = resetPasswordNextLogin;
-    }
-
-    public Date getCreatedDate() {
-        return createdDate;
-    }
-
-    public void setCreatedDate(Date createdDate) {
-        this.createdDate = createdDate;
-    }
-
-    public Date getLastModifiedDate() {
-        return lastModifiedDate;
-    }
-
-    public void setLastModifiedDate(Date lastModifiedDate) {
-        this.lastModifiedDate = lastModifiedDate;
-    }
-
-    public String getLastModifiedBy() {
-        return lastModifiedBy;
-    }
-
-    public void setLastModifiedBy(String lastModifiedBy) {
-        this.lastModifiedBy = lastModifiedBy;
-    }
-
-    public String getUserMobile() {
-        return userMobile;
-    }
-
-    public void setUserMobile(String userMobile) {
-        this.userMobile = userMobile;
-    }
 }
 

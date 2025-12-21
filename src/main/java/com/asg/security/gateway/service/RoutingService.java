@@ -91,7 +91,10 @@ public class RoutingService {
         headers.add("X-User-Email", UserContext.getUserEmail());
         headers.add("X-User-Role", UserContext.getUserRole());
         headers.add("X-Group-Poid", UserContext.getGroupPoid() != null ? UserContext.getGroupPoid().toString() : null);
-        headers.add("X-Company-Poid", UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid().toString() : null);
+
+        if (!headers.containsKey("X-Company-Poid") || StringUtils.isBlank(headers.getFirst("X-Company-Poid"))) {
+            headers.add("X-Company-Poid", UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid().toString() : null);
+        }
     }
 }
 
