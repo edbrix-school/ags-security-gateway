@@ -56,6 +56,7 @@ public class AuthService {
     private final StateRepository stateRepository;
     private final TimeZoneRepository timeZoneRepository;
     private final MenuRepository menuRepository;
+    private final CompanyDivisionRepository companyDivisionRepository;
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -132,29 +133,42 @@ public class AuthService {
         try {
 
 
-        List<String> roleNames = roleService.getUserRoleNames(user.getUserPoid());
-        String token = jwtUtils.generateToken(user, roleNames);
-        String refreshToken = jwtUtils.generateRefreshToken(user.getUserId());
+            List<String> roleNames = roleService.getUserRoleNames(user.getUserPoid());
+            String token = jwtUtils.generateToken(user, roleNames);
+            String refreshToken = jwtUtils.generateRefreshToken(user.getUserId());
+            String countryCode = getCountryCodeForCompany(user.getDefaultCompanyPoid());
+            Company company = getCompany(user.getDefaultCompanyPoid());
+            if (company == null) {
+                throw new ResourceNotFoundException("Company", "defaultCompanyPoid", user.getDefaultCompanyPoid());
+            }
 
-        Map<String, Object> userDetails = new HashMap<>();
-        userDetails.put("userName", user.getUserName());
-        userDetails.put("userId", user.getUserId());
-        userDetails.put("userPoid", user.getUserPoid());
-        userDetails.put("userEmail", user.getEmail());
-        userDetails.put("groupPoid", user.getGroupPoid());
-        userDetails.put("joinedDate", user.getCreatedDate());
-        userDetails.put("resetPasswordNextLogin", user.getResetPasswordNextLogin());
-        userDetails.put("defaultCompanyPoid", user.getDefaultCompanyPoid());
-        userDetails.put("roles", roleNames);
 
-        AuthenticationResponse response = new AuthenticationResponse();
-        response.setAuth_token(token);
-        response.setRefresh_token(refreshToken);
-        response.setUser_details(userDetails);
-        response.setToken_expiry(jwtUtils.getExpirationDate(token));
-        return response;}catch (Exception e){e.printStackTrace();
-        throw new RuntimeException(e)
-      ;  }
+            Map<String, Object> userDetails = new HashMap<String, Object>();
+            userDetails.put("userName", user.getUserName());
+            userDetails.put("userId", user.getUserId());
+            userDetails.put("label", user.getUserName());
+            userDetails.put("value", user.getUserPoid());
+            userDetails.put("userPoid", user.getUserPoid());
+            userDetails.put("userEmail", user.getEmail());
+            userDetails.put("groupPoid", user.getGroupPoid());
+            userDetails.put("joinedDate", user.getCreatedDate());
+            userDetails.put("resetPasswordNextLogin", user.getResetPasswordNextLogin());
+            userDetails.put("defaultCompany", company);
+            userDetails.put("countryCode", countryCode);
+            userDetails.put("defaultCompanyPoid", user.getDefaultCompanyPoid());
+            userDetails.put("roles", roleNames);
+
+            AuthenticationResponse response = new AuthenticationResponse();
+            response.setAuth_token(token);
+            response.setRefresh_token(refreshToken);
+            response.setUser_details(userDetails);
+            response.setToken_expiry(jwtUtils.getExpirationDate(token));
+            return response;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e)
+                    ;
+        }
     }
 
     public static String getSecureString(String password, String salt) {
@@ -400,6 +414,7 @@ public class AuthService {
                         company.setStateName(state != null ? state.getStateName() : null);
                     }
                 }
+                company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
                 if (company.getTimezoneId() != null) {
                     TimeZoneEntity timeZoneEntity = timeZoneRepository.findByTimezoneId(company.getTimezoneId());
@@ -487,5 +502,36 @@ public class AuthService {
 
         return level0;
     }
+
+    public Company getCompany(Long companyId) {
+        try {
+            Company company = companyRepository.findByCompanyPoid(companyId);
+            if (company == null) {
+                throw new ResourceNotFoundException("Company", "companyId", companyId.toString());
+            }
+            company.setLabel(company.getCompanyName()); //label(name)
+            company.setValue(company.getCompanyPoid()); //value(primarykey)
+            if (company.getTimezoneId() != null) {
+                TimeZoneEntity timeZoneEntity = timeZoneRepository.findByTimezoneId(company.getTimezoneId());
+                TimeZoneDto timeZoneDto = timeZoneEntity != null ? new TimeZoneDto(timeZoneEntity.getTimezoneId(), timeZoneEntity.getTimezoneCode(), timeZoneEntity.getTimezoneName()) : null;
+                company.setTimeZone(timeZoneDto);
+            }
+
+            String countryCode = getCountryCodeForCompany(company.getCompanyPoid());
+            company.setCountryCode(countryCode);
+
+            company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
+
+            if (company.getCountryId() != null && company.getStateId() != null) {
+                State state = getStateForCompany(company.getCountryId(), company.getStateId());
+                company.setStateName(state != null ? state.getStateName() : null);
+            }
+
+           return company;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
 }
 
