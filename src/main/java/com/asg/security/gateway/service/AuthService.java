@@ -148,10 +148,10 @@ public class AuthService {
         userDetails.put("roles", roleNames);
 
         AuthenticationResponse response = new AuthenticationResponse();
-        response.setAuthToken(token);
-        response.setRefreshToken(refreshToken);
-        response.setUserDetails(userDetails);
-        response.setTokenExpiry(jwtUtils.getExpirationDate(token));
+        response.setAuth_token(token);
+        response.setRefresh_token(refreshToken);
+        response.setUser_details(userDetails);
+        response.setToken_expiry(jwtUtils.getExpirationDate(token));
         return response;}catch (Exception e){e.printStackTrace();
         throw new RuntimeException(e)
       ;  }

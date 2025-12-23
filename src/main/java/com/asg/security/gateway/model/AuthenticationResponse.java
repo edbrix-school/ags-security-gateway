@@ -1,45 +1,23 @@
 package com.asg.security.gateway.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.Date;
 import java.util.Map;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AuthenticationResponse {
 
-    private String authToken;
-    private String refreshToken;
-    private Date tokenExpiry;
-    private Map<String, Object> userDetails;
+    private String auth_token;
+    private String refresh_token;
+    private Date token_expiry;
+    private Map<String, Object> user_details;
 
-    public String getAuthToken() {
-        return authToken;
-    }
-
-    public void setAuthToken(String authToken) {
-        this.authToken = authToken;
-    }
-
-    public String getRefreshToken() {
-        return refreshToken;
-    }
-
-    public void setRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
-    }
-
-    public Date getTokenExpiry() {
-        return tokenExpiry;
-    }
-
-    public void setTokenExpiry(Date tokenExpiry) {
-        this.tokenExpiry = tokenExpiry;
-    }
-
-    public Map<String, Object> getUserDetails() {
-        return userDetails;
-    }
-
-    public void setUserDetails(Map<String, Object> userDetails) {
-        this.userDetails = userDetails;
-    }
 }
 
