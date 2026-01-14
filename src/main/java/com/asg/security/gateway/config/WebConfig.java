@@ -25,7 +25,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/asg/settings/api/v1/task-category/subcategories/**",
                         "/asg/settings/api/v1/document/details",
-                        "/asg/settings/api/v1/document/searchable-fields/**"
+                        "/asg/settings/api/v1/document/searchable-fields/**",
+                        "/asg/finance/api/v1/billwise-breakup/**"
                 );
     }
 }
