@@ -259,6 +259,9 @@ public class AuthService {
             }
 
             String hashedNewPassword = getSecureString(decodedNewPassword, "salt");
+            if (hashedNewPassword.equals(user.getPwd())) {
+                throw new AsgException("New password cannot be same as old password", 400);
+            }
             String function = "{ ? = call FUNC_USER_PSWD_CHANGE(?, ?, ?, ?, ?, ?, ?) }";
 
             return jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
