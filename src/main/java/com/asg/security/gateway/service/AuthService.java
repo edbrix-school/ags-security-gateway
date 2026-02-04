@@ -28,11 +28,13 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,9 +62,11 @@ public class AuthService {
 
     private final JdbcTemplate jdbcTemplate;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthenticationResponse login(LoginRequest request) {
         String sanitizedUserId = request.getUserId().trim();
+        log.info("Login attempt for user: {}", sanitizedUserId);
+        
         String password = decode(request.getPassword().trim());
 
         User user = userRepository.findByUserIdIgnoreCaseAndActive(sanitizedUserId, "Y")
@@ -77,11 +81,21 @@ public class AuthService {
             throw new IllegalStateException(errorMessage);
         }
 
+        // Check cache-based lockout
+        String cacheKey = "failedAttempts_" + sanitizedUserId;
+        Integer attempts = cacheService.get("loginCache", cacheKey, Integer.class);
+        if (attempts != null && attempts >= 5) {
+            throw new IllegalStateException("User account is locked: Account locked due to 5 consecutive failed login attempts");
+        }
+
         String hashPassword = getSecureString(password, "salt");
         if (!hashPassword.equals(user.getPwd())) {
+            log.warn("Password mismatch for user: {}. Calling handleFailedLogin.", sanitizedUserId);
+            handleFailedLogin(user);
             throw new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again");
         }
 
+        resetFailedLoginAttempts(user);
         return generateAuthenticationResponse(user);
     }
 
@@ -357,6 +371,47 @@ public class AuthService {
     private String generateRandomOtp() {
         Random random = new Random();
         return String.format("%06d", random.nextInt(1000000));
+    }
+
+    private void handleFailedLogin(User user) {
+        try {
+            String cacheKey = "failedAttempts_" + user.getUserId();
+            Integer attempts = cacheService.get("loginCache", cacheKey, Integer.class);
+            attempts = (attempts != null ? attempts : 0) + 1;
+            
+            log.warn("Failed login attempt #{} for user: {}", attempts, user.getUserId());
+            
+            // Store failed attempts in cache with 30 minutes expiry
+            cacheService.put("loginCache", cacheKey, attempts, 30);
+            
+            // Update database when user gets locked (5 attempts)
+            if (attempts >= 5) {
+                user.setUserLocked("Y");
+                user.setUserLockedReason("Account locked due to 5 consecutive failed login attempts");
+                userRepository.save(user);
+                log.warn("User {} locked in database after {} failed attempts", user.getUserId(), attempts);
+            }
+        } catch (Exception e) {
+            log.error("Error handling failed login for user {}: {}", user.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    private void resetFailedLoginAttempts(User user) {
+        try {
+            String cacheKey = "failedAttempts_" + user.getUserId();
+            log.info("Resetting failed login attempts for user: {}", user.getUserId());
+            cacheService.evict("loginCache", cacheKey);
+            
+            // Reset database lock status on successful login
+            if ("Y".equals(user.getUserLocked())) {
+                user.setUserLocked("N");
+                user.setUserLockedReason(null);
+                userRepository.save(user);
+                log.info("Database lock status reset for user: {}", user.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("Error resetting failed login attempts for user {}: {}", user.getUserId(), e.getMessage());
+        }
     }
 
     public String resetUserPassword(String userId) {
