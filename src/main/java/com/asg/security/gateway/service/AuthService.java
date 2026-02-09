@@ -61,17 +61,21 @@ public class AuthService {
     private final CompanyDivisionRepository companyDivisionRepository;
 
     private final JdbcTemplate jdbcTemplate;
+    private final LoginFailureService loginFailureService;
 
     @Transactional
     public AuthenticationResponse login(LoginRequest request) {
         String sanitizedUserId = request.getUserId().trim();
         log.info("Login attempt for user: {}", sanitizedUserId);
-        
+
         String password = decode(request.getPassword().trim());
 
         User user = userRepository.findByUserIdIgnoreCaseAndActive(sanitizedUserId, "Y")
-                .orElseThrow(() -> new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Incorrect credentials. Please check your userId and password and try again"
+                ));
 
+        // DB lock check
         if ("Y".equalsIgnoreCase(user.getUserLocked())) {
             String lockReason = user.getUserLockedReason();
             String errorMessage = "User account is locked";
@@ -81,23 +85,28 @@ public class AuthService {
             throw new IllegalStateException(errorMessage);
         }
 
-        // Check cache-based lockout
+        // Cache-based early lock
         String cacheKey = "failedAttempts_" + sanitizedUserId;
         Integer attempts = cacheService.get("loginCache", cacheKey, Integer.class);
         if (attempts != null && attempts >= 5) {
-            throw new IllegalStateException("User account is locked: Account locked due to 5 consecutive failed login attempts");
+            throw new IllegalStateException(
+                    "User account is locked: Account locked due to 5 consecutive failed login attempts"
+            );
         }
 
         String hashPassword = getSecureString(password, "salt");
         if (!hashPassword.equals(user.getPwd())) {
-            log.warn("Password mismatch for user: {}. Calling handleFailedLogin.", sanitizedUserId);
-            handleFailedLogin(user);
-            throw new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again");
+            log.warn("Password mismatch for user: {}", sanitizedUserId);
+            loginFailureService.handleFailedLogin(user);
+            throw new IllegalArgumentException(
+                    "Incorrect credentials. Please check your userId and password and try again"
+            );
         }
 
         resetFailedLoginAttempts(user);
         return generateAuthenticationResponse(user);
     }
+
 
     @Transactional(readOnly = true)
     public AuthenticationResponse ssoLogin(AuthenticationRequest authenticationRequest) {
@@ -371,29 +380,6 @@ public class AuthService {
     private String generateRandomOtp() {
         Random random = new Random();
         return String.format("%06d", random.nextInt(1000000));
-    }
-
-    private void handleFailedLogin(User user) {
-        try {
-            String cacheKey = "failedAttempts_" + user.getUserId();
-            Integer attempts = cacheService.get("loginCache", cacheKey, Integer.class);
-            attempts = (attempts != null ? attempts : 0) + 1;
-            
-            log.warn("Failed login attempt #{} for user: {}", attempts, user.getUserId());
-            
-            // Store failed attempts in cache with 30 minutes expiry
-            cacheService.put("loginCache", cacheKey, attempts, 30);
-            
-            // Update database when user gets locked (5 attempts)
-            if (attempts >= 5) {
-                user.setUserLocked("Y");
-                user.setUserLockedReason("Account locked due to 5 consecutive failed login attempts");
-                userRepository.save(user);
-                log.warn("User {} locked in database after {} failed attempts", user.getUserId(), attempts);
-            }
-        } catch (Exception e) {
-            log.error("Error handling failed login for user {}: {}", user.getUserId(), e.getMessage(), e);
-        }
     }
 
     private void resetFailedLoginAttempts(User user) {
