@@ -31,9 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import net.coobird.thumbnailator.Thumbnails;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -466,6 +464,14 @@ public class AuthService {
                 }
                 company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
+                if (company.getDivisions() != null) {
+                    for (CompanyDivisionEntity division : company.getDivisions()) {
+                        if (division.getCompanyDivLogo()!= null) {
+                            division.setLogoImageBase64(convertToThumbnail(division.getCompanyDivLogo()));
+                        }
+                    }
+                }
+
                 if (company.getTimezoneId() != null) {
                     TimeZoneEntity timeZoneEntity = timeZoneRepository.findByTimezoneId(company.getTimezoneId());
                     if (timeZoneEntity != null) {
@@ -474,7 +480,7 @@ public class AuthService {
                 }
 
                 if (company.getLogoImage() != null) {
-                    company.setLogoImageBase64(convertToThumbnail(company.getLogoImage(), 150, 150));
+                    company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
                 }
 
                 companies.add(company);
@@ -576,9 +582,21 @@ public class AuthService {
 
             company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
+            if (company.getDivisions() != null) {
+                for (CompanyDivisionEntity division : company.getDivisions()) {
+                    if (division.getCompanyDivLogo()!= null) {
+                        division.setLogoImageBase64(convertToThumbnail(division.getCompanyDivLogo()));
+                    }
+                }
+            }
+
             if (company.getCountryId() != null && company.getStateId() != null) {
                 State state = getStateForCompany(company.getCountryId(), company.getStateId());
                 company.setStateName(state != null ? state.getStateName() : null);
+            }
+
+            if (company.getLogoImage() != null) {
+                company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
             }
 
            return company;
@@ -587,17 +605,26 @@ public class AuthService {
         }
     }
 
-    private String convertToThumbnail(byte[] imageBytes, int width, int height) {
+    private byte[] convertToThumbnailBytes(byte[] imageBytes) {
         try {
-            BufferedImage original = ImageIO.read(new ByteArrayInputStream(imageBytes));
-            Image scaled = original.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-            BufferedImage thumbnail = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-            thumbnail.getGraphics().drawImage(scaled, 0, 0, null);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(thumbnail, "jpg", baos);
-            return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(baos.toByteArray());
+            Thumbnails.of(new ByteArrayInputStream(imageBytes))
+                    .scale(0.4)
+                    .outputFormat("jpg")
+                    .outputQuality(0.6)
+                    .toOutputStream(baos);
+            return baos.toByteArray();
         } catch (Exception e) {
-            return null;
+            return imageBytes;
+        }
+    }
+
+    private String convertToThumbnail(byte[] imageBytes) {
+        try {
+            byte[] thumbnail = convertToThumbnailBytes(imageBytes);
+            return thumbnail != null ? "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(thumbnail) : null;
+        } catch (Exception e) {
+            return imageBytes != null ? "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(imageBytes) : null;
         }
     }
 
