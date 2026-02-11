@@ -28,12 +28,20 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Timestamp;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.asg.security.gateway.util.ApiResponse.*;
@@ -59,15 +67,21 @@ public class AuthService {
     private final CompanyDivisionRepository companyDivisionRepository;
 
     private final JdbcTemplate jdbcTemplate;
+    private final LoginFailureService loginFailureService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthenticationResponse login(LoginRequest request) {
         String sanitizedUserId = request.getUserId().trim();
+        log.info("Login attempt for user: {}", sanitizedUserId);
+
         String password = decode(request.getPassword().trim());
 
         User user = userRepository.findByUserIdIgnoreCaseAndActive(sanitizedUserId, "Y")
-                .orElseThrow(() -> new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Incorrect credentials. Please check your userId and password and try again"
+                ));
 
+        // DB lock check
         if ("Y".equalsIgnoreCase(user.getUserLocked())) {
             String lockReason = user.getUserLockedReason();
             String errorMessage = "User account is locked";
@@ -77,13 +91,28 @@ public class AuthService {
             throw new IllegalStateException(errorMessage);
         }
 
-        String hashPassword = getSecureString(password, "salt");
-        if (!hashPassword.equals(user.getPwd())) {
-            throw new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again");
+        // Cache-based early lock
+        String cacheKey = "failedAttempts_" + sanitizedUserId;
+        Integer attempts = cacheService.get("loginCache", cacheKey, Integer.class);
+        if (attempts != null && attempts >= 5) {
+            throw new IllegalStateException(
+                    "User account is locked: Account locked due to 5 consecutive failed login attempts"
+            );
         }
 
+        String hashPassword = getSecureString(password, "salt");
+        if (!hashPassword.equals(user.getPwd())) {
+            log.warn("Password mismatch for user: {}", sanitizedUserId);
+            loginFailureService.handleFailedLogin(user);
+            throw new IllegalArgumentException(
+                    "Incorrect credentials. Please check your userId and password and try again"
+            );
+        }
+
+        resetFailedLoginAttempts(user);
         return generateAuthenticationResponse(user);
     }
+
 
     @Transactional(readOnly = true)
     public AuthenticationResponse ssoLogin(AuthenticationRequest authenticationRequest) {
@@ -359,6 +388,24 @@ public class AuthService {
         return String.format("%06d", random.nextInt(1000000));
     }
 
+    private void resetFailedLoginAttempts(User user) {
+        try {
+            String cacheKey = "failedAttempts_" + user.getUserId();
+            log.info("Resetting failed login attempts for user: {}", user.getUserId());
+            cacheService.evict("loginCache", cacheKey);
+            
+            // Reset database lock status on successful login
+            if ("Y".equals(user.getUserLocked())) {
+                user.setUserLocked("N");
+                user.setUserLockedReason(null);
+                userRepository.save(user);
+                log.info("Database lock status reset for user: {}", user.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("Error resetting failed login attempts for user {}: {}", user.getUserId(), e.getMessage());
+        }
+    }
+
     public String resetUserPassword(String userId) {
         try {
             User user = validateActiveUser(userId);
@@ -424,6 +471,10 @@ public class AuthService {
                     if (timeZoneEntity != null) {
                         company.setTimeZone(new TimeZoneDto(timeZoneEntity.getTimezoneId(), timeZoneEntity.getTimezoneCode(), timeZoneEntity.getTimezoneName()));
                     }
+                }
+
+                if (company.getLogoImage() != null) {
+                    company.setLogoImageBase64(convertToThumbnail(company.getLogoImage(), 150, 150));
                 }
 
                 companies.add(company);
@@ -533,6 +584,20 @@ public class AuthService {
            return company;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private String convertToThumbnail(byte[] imageBytes, int width, int height) {
+        try {
+            BufferedImage original = ImageIO.read(new ByteArrayInputStream(imageBytes));
+            Image scaled = original.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+            BufferedImage thumbnail = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            thumbnail.getGraphics().drawImage(scaled, 0, 0, null);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(thumbnail, "jpg", baos);
+            return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) {
+            return null;
         }
     }
 
