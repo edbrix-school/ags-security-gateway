@@ -94,14 +94,9 @@ public class AuthController {
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@Valid @RequestBody SendOtpRequest request) {
         try {
-            String result = authService.sendOtp(request.getUserId());
-            if (!StringUtils.isBlank(result) && result.toUpperCase().contains("TRUE")) {
-                log.info("OTP sent successfully for userId: {}", request.getUserId());
-                return success("OTP sent successfully", null);
-            } else {
-                log.warn("OTP sending failed for userId: {} | Result: {}", request.getUserId(), result);
-                throw new AsgException("Failed to send OTP: " + result, 400);
-            }
+            Map<String, String> result = authService.sendOtp(request.getUserId());
+            log.info("OTP sent successfully for userId: {}", request.getUserId());
+            return success("OTP sent successfully", result);
         } catch (AsgException e) {
             return badRequest(e.getMessage());
         } catch (Exception e) {
