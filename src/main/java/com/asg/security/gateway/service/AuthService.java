@@ -311,26 +311,49 @@ public class AuthService {
         }
     }
 
-    public String sendOtp(String userId) {
+    public Map<String, String> sendOtp(String userId) {
         try {
             User user = validateActiveUser(userId);
             String otp = generateRandomOtp();
             // Store OTP in cache with 10 minutes expiry
             cacheService.put("otpCache", userId, otp, 10);
             String function = "{ ? = call FUNC_USER_PSWD_OTP(?, ?) }";
-            return jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
+            String result = jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
                 cs.registerOutParameter(1, java.sql.Types.VARCHAR);
                 cs.setLong(2, user.getUserPoid());
                 cs.setString(3, otp);
                 cs.execute();
                 return cs.getString(1);
             });
+            
+            if (StringUtils.isBlank(result) || !result.toUpperCase().contains("TRUE")) {
+                throw new AsgException("Failed to send OTP: " + result, 400);
+            }
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("email", maskEmail(user.getEmail()));
+            return response;
         } catch (AsgException e) {
             throw e;
         } catch (Exception e) {
             log.error("Exception while sending OTP for userId {}: {}", userId, e.getMessage(), e);
             throw new AsgException("Exception while sending OTP: " + e.getMessage(), 500);
         }
+    }
+    
+    private String maskEmail(String email) {
+        if (StringUtils.isBlank(email)) {
+            return "";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return email;
+        }
+        String localPart = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        int visibleChars = Math.min(2, localPart.length());
+        String masked = localPart.substring(0, visibleChars) + "***";
+        return masked + domain;
     }
 
     public String forgotPassword(String userId, String otp) {
