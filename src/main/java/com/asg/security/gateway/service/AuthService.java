@@ -160,7 +160,13 @@ public class AuthService {
 
     private AuthenticationResponse generateAuthenticationResponse(User user) {
         try {
-
+            // Invalidate previous session for same user+company
+            String sessionKey = user.getUserId() + "_" + user.getDefaultCompanyPoid();
+            String oldToken = cacheService.get("activeSessions", sessionKey, String.class);
+            if (oldToken != null) {
+                cacheService.put("tokenBlacklist", oldToken, true, 60);
+                log.info("Previous session invalidated for user: {} company: {}", user.getUserId(), user.getDefaultCompanyPoid());
+            }
 
             List<String> roleNames = roleService.getUserRoleNames(user.getUserPoid());
             String token = jwtUtils.generateToken(user, roleNames);
@@ -170,6 +176,10 @@ public class AuthService {
             if (company == null) {
                 throw new ResourceNotFoundException("Company", "defaultCompanyPoid", user.getDefaultCompanyPoid());
             }
+            
+            // Store new active session
+            cacheService.put("activeSessions", sessionKey, token, 60);
+            log.info("New session created for user: {} company: {}", user.getUserId(), user.getDefaultCompanyPoid());
 
 
             Map<String, Object> userDetails = new HashMap<String, Object>();

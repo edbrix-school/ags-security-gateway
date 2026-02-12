@@ -34,6 +34,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final PermissionService permissionService;
+    private final com.asg.security.gateway.service.CacheService cacheService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -137,6 +138,13 @@ public class AuthController {
             UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
             AuthenticationDetails authDetails = (AuthenticationDetails) auth.getDetails();
             Long userPoid = authDetails.getLoggedInUserPoid();
+            String userId = authDetails.getLoggedInUserId();
+            Long companyPoid = authDetails.getCompanyPoid();
+
+            // Clear active session
+            String sessionKey = userId + "_" + companyPoid;
+            cacheService.evict("activeSessions", sessionKey);
+            log.info("Session cleared for user: {} company: {}", userId, companyPoid);
 
             int clearedDrafts = authService.clearAllDraftsByUser(userPoid);
             log.info("User {} logged out. Cleared {} drafts", userPoid, clearedDrafts);

@@ -27,9 +27,11 @@ import java.util.stream.Collectors;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+    private final com.asg.security.gateway.service.CacheService cacheService;
 
-    public JwtAuthFilter(JwtUtils jwtUtils) {
+    public JwtAuthFilter(JwtUtils jwtUtils, com.asg.security.gateway.service.CacheService cacheService) {
         this.jwtUtils = jwtUtils;
+        this.cacheService = cacheService;
     }
 
     @Override
@@ -54,6 +56,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         request.setAttribute("TOKEN_USER_ID", jwtUtils.getUserIdFromRefreshToken(token));
                     }
                 } else {
+                    // Check if token is blacklisted
+                    Boolean isBlacklisted = cacheService.get("tokenBlacklist", token, Boolean.class);
+                    if (Boolean.TRUE.equals(isBlacklisted)) {
+                        throw new JwtException("Token has been invalidated due to new login");
+                    }
+                    
                     if (jwtUtils.isTokenValid(token)) {
                         List<SimpleGrantedAuthority> authorities = jwtUtils.getRolesFromToken(token).stream()
                                 .map(SimpleGrantedAuthority::new)
