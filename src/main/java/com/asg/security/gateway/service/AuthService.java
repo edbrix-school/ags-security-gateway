@@ -28,12 +28,18 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import net.coobird.thumbnailator.Thumbnails;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Timestamp;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.asg.security.gateway.util.ApiResponse.*;
@@ -59,15 +65,21 @@ public class AuthService {
     private final CompanyDivisionRepository companyDivisionRepository;
 
     private final JdbcTemplate jdbcTemplate;
+    private final LoginFailureService loginFailureService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthenticationResponse login(LoginRequest request) {
         String sanitizedUserId = request.getUserId().trim();
+        log.info("Login attempt for user: {}", sanitizedUserId);
+
         String password = decode(request.getPassword().trim());
 
         User user = userRepository.findByUserIdIgnoreCaseAndActive(sanitizedUserId, "Y")
-                .orElseThrow(() -> new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again"));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Incorrect credentials. Please check your userId and password and try again"
+                ));
 
+        // DB lock check
         if ("Y".equalsIgnoreCase(user.getUserLocked())) {
             String lockReason = user.getUserLockedReason();
             String errorMessage = "User account is locked";
@@ -77,13 +89,28 @@ public class AuthService {
             throw new IllegalStateException(errorMessage);
         }
 
-        String hashPassword = getSecureString(password, "salt");
-        if (!hashPassword.equals(user.getPwd())) {
-            throw new IllegalArgumentException("Incorrect credentials. Please check your userId and password and try again");
+        // Cache-based early lock
+        String cacheKey = "failedAttempts_" + sanitizedUserId;
+        Integer attempts = cacheService.get("loginCache", cacheKey, Integer.class);
+        if (attempts != null && attempts >= 5) {
+            throw new IllegalStateException(
+                    "User account is locked: Account locked due to 5 consecutive failed login attempts"
+            );
         }
 
+        String hashPassword = getSecureString(password, "salt");
+        if (!hashPassword.equals(user.getPwd())) {
+            log.warn("Password mismatch for user: {}", sanitizedUserId);
+            loginFailureService.handleFailedLogin(user);
+            throw new IllegalArgumentException(
+                    "Incorrect credentials. Please check your userId and password and try again"
+            );
+        }
+
+        resetFailedLoginAttempts(user);
         return generateAuthenticationResponse(user);
     }
+
 
     @Transactional(readOnly = true)
     public AuthenticationResponse ssoLogin(AuthenticationRequest authenticationRequest) {
@@ -284,26 +311,49 @@ public class AuthService {
         }
     }
 
-    public String sendOtp(String userId) {
+    public Map<String, String> sendOtp(String userId) {
         try {
             User user = validateActiveUser(userId);
             String otp = generateRandomOtp();
             // Store OTP in cache with 10 minutes expiry
             cacheService.put("otpCache", userId, otp, 10);
             String function = "{ ? = call FUNC_USER_PSWD_OTP(?, ?) }";
-            return jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
+            String result = jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
                 cs.registerOutParameter(1, java.sql.Types.VARCHAR);
                 cs.setLong(2, user.getUserPoid());
                 cs.setString(3, otp);
                 cs.execute();
                 return cs.getString(1);
             });
+            
+            if (StringUtils.isBlank(result) || !result.toUpperCase().contains("TRUE")) {
+                throw new AsgException("Failed to send OTP: " + result, 400);
+            }
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("email", maskEmail(user.getEmail()));
+            return response;
         } catch (AsgException e) {
             throw e;
         } catch (Exception e) {
             log.error("Exception while sending OTP for userId {}: {}", userId, e.getMessage(), e);
             throw new AsgException("Exception while sending OTP: " + e.getMessage(), 500);
         }
+    }
+    
+    private String maskEmail(String email) {
+        if (StringUtils.isBlank(email)) {
+            return "";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return email;
+        }
+        String localPart = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        int visibleChars = Math.min(2, localPart.length());
+        String masked = localPart.substring(0, visibleChars) + "***";
+        return masked + domain;
     }
 
     public String forgotPassword(String userId, String otp) {
@@ -357,6 +407,24 @@ public class AuthService {
     private String generateRandomOtp() {
         Random random = new Random();
         return String.format("%06d", random.nextInt(1000000));
+    }
+
+    private void resetFailedLoginAttempts(User user) {
+        try {
+            String cacheKey = "failedAttempts_" + user.getUserId();
+            log.info("Resetting failed login attempts for user: {}", user.getUserId());
+            cacheService.evict("loginCache", cacheKey);
+            
+            // Reset database lock status on successful login
+            if ("Y".equals(user.getUserLocked())) {
+                user.setUserLocked("N");
+                user.setUserLockedReason(null);
+                userRepository.save(user);
+                log.info("Database lock status reset for user: {}", user.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("Error resetting failed login attempts for user {}: {}", user.getUserId(), e.getMessage());
+        }
     }
 
     public String resetUserPassword(String userId) {
@@ -419,11 +487,23 @@ public class AuthService {
                 }
                 company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
+                if (company.getDivisions() != null) {
+                    for (CompanyDivisionEntity division : company.getDivisions()) {
+                        if (division.getCompanyDivLogo()!= null) {
+                            division.setLogoImageBase64(convertToThumbnail(division.getCompanyDivLogo()));
+                        }
+                    }
+                }
+
                 if (company.getTimezoneId() != null) {
                     TimeZoneEntity timeZoneEntity = timeZoneRepository.findByTimezoneId(company.getTimezoneId());
                     if (timeZoneEntity != null) {
                         company.setTimeZone(new TimeZoneDto(timeZoneEntity.getTimezoneId(), timeZoneEntity.getTimezoneCode(), timeZoneEntity.getTimezoneName()));
                     }
+                }
+
+                if (company.getLogoImage() != null) {
+                    company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
                 }
 
                 companies.add(company);
@@ -525,14 +605,49 @@ public class AuthService {
 
             company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
+            if (company.getDivisions() != null) {
+                for (CompanyDivisionEntity division : company.getDivisions()) {
+                    if (division.getCompanyDivLogo()!= null) {
+                        division.setLogoImageBase64(convertToThumbnail(division.getCompanyDivLogo()));
+                    }
+                }
+            }
+
             if (company.getCountryId() != null && company.getStateId() != null) {
                 State state = getStateForCompany(company.getCountryId(), company.getStateId());
                 company.setStateName(state != null ? state.getStateName() : null);
             }
 
+            if (company.getLogoImage() != null) {
+                company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
+            }
+
            return company;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private byte[] convertToThumbnailBytes(byte[] imageBytes) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Thumbnails.of(new ByteArrayInputStream(imageBytes))
+                    .scale(0.4)
+                    .outputFormat("jpg")
+                    .outputQuality(0.6)
+                    .toOutputStream(baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return imageBytes;
+        }
+    }
+
+    private String convertToThumbnail(byte[] imageBytes) {
+        try {
+            byte[] thumbnail = convertToThumbnailBytes(imageBytes);
+            return thumbnail != null ? "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(thumbnail) : null;
+        } catch (Exception e) {
+            return imageBytes != null ? "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(imageBytes) : null;
         }
     }
 

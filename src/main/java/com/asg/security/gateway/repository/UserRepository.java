@@ -16,5 +16,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE LOWER(u.userId) = LOWER(:userId)AND u.active = 'Y' AND u.deleted is NULL")
     Optional<User> findByActiveUserId(@Param("userId") String userId);
+    @Query("""
+           SELECT u.userLocked FROM User u
+           WHERE LOWER(u.userId) = LOWER(:userId)
+           """)
+    String findUserLockedStatus(@Param("userId") String userId);
 }
 
