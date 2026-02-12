@@ -13,6 +13,7 @@ public class AuthenticationDetails implements Serializable {
     private String loggedInUserRole;
     private Long groupPoid;
     private Long companyPoid;
+    private String timeZoneCode;
 
     public Long getLoggedInUserPoid() {
         return loggedInUserPoid;
@@ -68,6 +69,13 @@ public class AuthenticationDetails implements Serializable {
 
     public void setCompanyPoid(Long companyPoid) {
         this.companyPoid = companyPoid;
+    }
+
+    public String getTimeZoneCode() {
+        return timeZoneCode;
+    }
+    public void setTimeZoneCode(String timeZoneCode) {
+        this.timeZoneCode = timeZoneCode;
     }
 }
 

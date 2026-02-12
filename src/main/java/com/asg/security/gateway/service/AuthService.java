@@ -161,13 +161,14 @@ public class AuthService {
 
 
             List<String> roleNames = roleService.getUserRoleNames(user.getUserPoid());
-            String token = jwtUtils.generateToken(user, roleNames);
-            String refreshToken = jwtUtils.generateRefreshToken(user.getUserId());
-            String countryCode = getCountryCodeForCompany(user.getDefaultCompanyPoid());
             Company company = getCompany(user.getDefaultCompanyPoid());
             if (company == null) {
                 throw new ResourceNotFoundException("Company", "defaultCompanyPoid", user.getDefaultCompanyPoid());
             }
+            String token = jwtUtils.generateToken(user, roleNames, company);
+            String refreshToken = jwtUtils.generateRefreshToken(user.getUserId());
+            String countryCode = getCountryCodeForCompany(user.getDefaultCompanyPoid());
+
 
 
             Map<String, Object> userDetails = new HashMap<String, Object>();
