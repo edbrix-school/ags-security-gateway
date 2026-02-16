@@ -1,7 +1,6 @@
 package com.asg.security.gateway.util;
 
 import com.asg.security.gateway.config.JwtConfig;
-import com.asg.security.gateway.entity.Company;
 import com.asg.security.gateway.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
