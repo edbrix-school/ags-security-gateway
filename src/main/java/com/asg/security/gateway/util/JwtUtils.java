@@ -24,7 +24,7 @@ public class JwtUtils {
         this.jwtConfig = jwtConfig;
     }
 
-    public String generateToken(User user, List<String> roleNames, Company company) {
+    public String generateToken(User user, List<String> roleNames) {
         long now = System.currentTimeMillis();
 try {
     return Jwts.builder()
@@ -35,7 +35,6 @@ try {
             .claim("groupPoid", user.getGroupPoid())
             .claim("companyPoid", user.getDefaultCompanyPoid())
             .claim("roles", roleNames)
-            .claim("timeZoneCode", company.getTimeZone().code())
             .setIssuedAt(new Date(now))
             .setExpiration(new Date(now + jwtConfig.getExpirationInMs()))
             .signWith(SignatureAlgorithm.HS256, jwtConfig.getSecret())
@@ -114,10 +113,6 @@ try {
 
     public Long getCompanyPoidFromToken(String token) {
         return getClaims(token, jwtConfig.getSecret()).get("companyPoid", Long.class);
-    }
-
-    public String getTimeZoneCodeFromToken(String token) {
-        return getClaims(token, jwtConfig.getSecret()).get("timeZoneCode", String.class);
     }
 
     public Date getExpirationDate(String token) {
