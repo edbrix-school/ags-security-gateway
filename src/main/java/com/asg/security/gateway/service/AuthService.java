@@ -31,11 +31,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import net.coobird.thumbnailator.Thumbnails;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.asg.security.gateway.util.ApiResponse.*;
@@ -285,6 +289,12 @@ public class AuthService {
             if (hashedNewPassword.equals(user.getPwd())) {
                 throw new AsgException("New password cannot be same as old password", 400);
             }
+
+            // Check against password history
+            if (isPasswordInHistory(user.getUserPoid(), hashedNewPassword)) {
+                throw new AsgException("New password cannot be same as any of your last 5 previously used passwords", 400);
+            }
+
             String function = "{ ? = call FUNC_USER_PSWD_CHANGE(?, ?, ?, ?, ?, ?, ?) }";
 
             return jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
@@ -307,26 +317,49 @@ public class AuthService {
         }
     }
 
-    public String sendOtp(String userId) {
+    public Map<String, String> sendOtp(String userId) {
         try {
             User user = validateActiveUser(userId);
             String otp = generateRandomOtp();
             // Store OTP in cache with 10 minutes expiry
             cacheService.put("otpCache", userId, otp, 10);
             String function = "{ ? = call FUNC_USER_PSWD_OTP(?, ?) }";
-            return jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
+            String result = jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
                 cs.registerOutParameter(1, java.sql.Types.VARCHAR);
                 cs.setLong(2, user.getUserPoid());
                 cs.setString(3, otp);
                 cs.execute();
                 return cs.getString(1);
             });
+            
+            if (StringUtils.isBlank(result) || !result.toUpperCase().contains("TRUE")) {
+                throw new AsgException("Failed to send OTP: " + result, 400);
+            }
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("email", maskEmail(user.getEmail()));
+            return response;
         } catch (AsgException e) {
             throw e;
         } catch (Exception e) {
             log.error("Exception while sending OTP for userId {}: {}", userId, e.getMessage(), e);
             throw new AsgException("Exception while sending OTP: " + e.getMessage(), 500);
         }
+    }
+    
+    private String maskEmail(String email) {
+        if (StringUtils.isBlank(email)) {
+            return "";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return email;
+        }
+        String localPart = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        int visibleChars = Math.min(2, localPart.length());
+        String masked = localPart.substring(0, visibleChars) + "***";
+        return masked + domain;
     }
 
     public String forgotPassword(String userId, String otp) {
@@ -400,12 +433,29 @@ public class AuthService {
         }
     }
 
+    private boolean isPasswordInHistory(Long userPoid, String hashedPassword) {
+        String function = "{ ? = call FUNC_CHECK_PASSWORD_HISTORY(?, ?) }";
+        return jdbcTemplate.execute(function, (CallableStatementCallback<Boolean>) cs -> {
+            cs.registerOutParameter(1, java.sql.Types.VARCHAR);
+            cs.setLong(2, userPoid);
+            cs.setString(3, hashedPassword);
+            cs.execute();
+            String result = cs.getString(1);
+            return "TRUE".equalsIgnoreCase(result);
+        });
+    }
+
     public String resetUserPassword(String userId) {
         try {
             User user = validateActiveUser(userId);
 
             String newPassword = generateRandomPassword(10);
             String hashedPassword = getSecureString(newPassword, "salt");
+
+            // Check against password history
+            if (isPasswordInHistory(user.getUserPoid(), hashedPassword)) {
+                throw new AsgException("Generated password matches last 5 previously used passwords. Please try again", 400);
+            }
 
             String function = "{ ? = call FUNC_USER_PSWD_RESET(?, ?, ?) }";
 
@@ -460,11 +510,23 @@ public class AuthService {
                 }
                 company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
+                if (company.getDivisions() != null) {
+                    for (CompanyDivisionEntity division : company.getDivisions()) {
+                        if (division.getCompanyDivLogo()!= null) {
+                            division.setLogoImageBase64(convertToThumbnail(division.getCompanyDivLogo()));
+                        }
+                    }
+                }
+
                 if (company.getTimezoneId() != null) {
                     TimeZoneEntity timeZoneEntity = timeZoneRepository.findByTimezoneId(company.getTimezoneId());
                     if (timeZoneEntity != null) {
                         company.setTimeZone(new TimeZoneDto(timeZoneEntity.getTimezoneId(), timeZoneEntity.getTimezoneCode(), timeZoneEntity.getTimezoneName()));
                     }
+                }
+
+                if (company.getLogoImage() != null) {
+                    company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
                 }
 
                 companies.add(company);
@@ -566,14 +628,49 @@ public class AuthService {
 
             company.setDivisions(companyDivisionRepository.findById_CompanyPoid(company.getCompanyPoid()));
 
+            if (company.getDivisions() != null) {
+                for (CompanyDivisionEntity division : company.getDivisions()) {
+                    if (division.getCompanyDivLogo()!= null) {
+                        division.setLogoImageBase64(convertToThumbnail(division.getCompanyDivLogo()));
+                    }
+                }
+            }
+
             if (company.getCountryId() != null && company.getStateId() != null) {
                 State state = getStateForCompany(company.getCountryId(), company.getStateId());
                 company.setStateName(state != null ? state.getStateName() : null);
             }
 
+            if (company.getLogoImage() != null) {
+                company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
+            }
+
            return company;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private byte[] convertToThumbnailBytes(byte[] imageBytes) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Thumbnails.of(new ByteArrayInputStream(imageBytes))
+                    .scale(0.4)
+                    .outputFormat("jpg")
+                    .outputQuality(0.6)
+                    .toOutputStream(baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            return imageBytes;
+        }
+    }
+
+    private String convertToThumbnail(byte[] imageBytes) {
+        try {
+            byte[] thumbnail = convertToThumbnailBytes(imageBytes);
+            return thumbnail != null ? "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(thumbnail) : null;
+        } catch (Exception e) {
+            return imageBytes != null ? "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(imageBytes) : null;
         }
     }
 
