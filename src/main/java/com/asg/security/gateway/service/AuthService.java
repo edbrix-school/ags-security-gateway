@@ -289,6 +289,12 @@ public class AuthService {
             if (hashedNewPassword.equals(user.getPwd())) {
                 throw new AsgException("New password cannot be same as old password", 400);
             }
+
+            // Check against password history
+            if (isPasswordInHistory(user.getUserPoid(), hashedNewPassword)) {
+                throw new AsgException("New password cannot be same as any of your previously used passwords", 400);
+            }
+
             String function = "{ ? = call FUNC_USER_PSWD_CHANGE(?, ?, ?, ?, ?, ?, ?) }";
 
             return jdbcTemplate.execute(function, (CallableStatementCallback<String>) cs -> {
@@ -427,12 +433,29 @@ public class AuthService {
         }
     }
 
+    private boolean isPasswordInHistory(Long userPoid, String hashedPassword) {
+        String function = "{ ? = call FUNC_CHECK_PASSWORD_HISTORY(?, ?) }";
+        return jdbcTemplate.execute(function, (CallableStatementCallback<Boolean>) cs -> {
+            cs.registerOutParameter(1, java.sql.Types.VARCHAR);
+            cs.setLong(2, userPoid);
+            cs.setString(3, hashedPassword);
+            cs.execute();
+            String result = cs.getString(1);
+            return "TRUE".equalsIgnoreCase(result);
+        });
+    }
+
     public String resetUserPassword(String userId) {
         try {
             User user = validateActiveUser(userId);
 
             String newPassword = generateRandomPassword(10);
             String hashedPassword = getSecureString(newPassword, "salt");
+
+            // Check against password history
+            if (isPasswordInHistory(user.getUserPoid(), hashedPassword)) {
+                throw new AsgException("Generated password matches previous passwords. Please try again", 400);
+            }
 
             String function = "{ ? = call FUNC_USER_PSWD_RESET(?, ?, ?) }";
 
