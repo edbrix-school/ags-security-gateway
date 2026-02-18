@@ -292,7 +292,7 @@ public class AuthService {
 
             // Check against password history
             if (isPasswordInHistory(user.getUserPoid(), hashedNewPassword)) {
-                throw new AsgException("New password cannot be same as any of your previously used passwords", 400);
+                throw new AsgException("New password cannot be same as any of your last 5 previously used passwords", 400);
             }
 
             String function = "{ ? = call FUNC_USER_PSWD_CHANGE(?, ?, ?, ?, ?, ?, ?) }";
@@ -454,7 +454,7 @@ public class AuthService {
 
             // Check against password history
             if (isPasswordInHistory(user.getUserPoid(), hashedPassword)) {
-                throw new AsgException("Generated password matches previous passwords. Please try again", 400);
+                throw new AsgException("Generated password matches last 5 previously used passwords. Please try again", 400);
             }
 
             String function = "{ ? = call FUNC_USER_PSWD_RESET(?, ?, ?) }";
