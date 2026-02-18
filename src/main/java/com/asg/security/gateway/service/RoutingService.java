@@ -94,6 +94,7 @@ public class RoutingService {
 
         addHeaderIfMissing(headers, "X-Company-Poid", UserContext.getCompanyPoid() != null ? UserContext.getCompanyPoid().toString() : null);
         addHeaderIfMissing(headers, "X-Log-Enabled", "true");
+        addHeaderIfMissing(headers, "X-TimeZone-Code", UserContext.getTimeZoneCode());
     }
 
     private void addHeaderIfMissing(HttpHeaders headers, String headerName, String value) {

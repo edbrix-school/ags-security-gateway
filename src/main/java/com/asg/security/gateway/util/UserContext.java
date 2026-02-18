@@ -51,5 +51,10 @@ public final class UserContext {
         AuthenticationDetails details = getCurrentUser();
         return details != null ? details.getCompanyPoid() : null;
     }
+
+    public static String getTimeZoneCode() {
+        AuthenticationDetails details = getCurrentUser();
+        return details != null ? details.getTimeZoneCode() : null;
+    }
 }
 
