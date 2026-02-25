@@ -3,7 +3,9 @@ package com.asg.security.gateway.service;
 import com.asg.security.gateway.aad.AzureADClient;
 import com.asg.security.gateway.dto.MenuItemDto;
 import com.asg.security.gateway.dto.TimeZoneDto;
+import com.asg.security.gateway.dto.CurrencyDetails;
 import com.asg.security.gateway.entity.*;
+import com.asg.security.gateway.entity.Currency;
 import com.asg.security.gateway.exception.AsgException;
 import com.asg.security.gateway.exception.AzureAuthenticationException;
 import com.asg.security.gateway.exception.EmailNotFoundException;
@@ -28,7 +30,6 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import net.coobird.thumbnailator.Thumbnails;
@@ -37,7 +38,6 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,6 +63,7 @@ public class AuthService {
     private final TimeZoneRepository timeZoneRepository;
     private final MenuRepository menuRepository;
     private final CompanyDivisionRepository companyDivisionRepository;
+    private final CurrencyRepository currencyRepository;
 
     private final JdbcTemplate jdbcTemplate;
     private final LoginFailureService loginFailureService;
@@ -525,6 +526,15 @@ public class AuthService {
                     }
                 }
 
+                if (company.getCurrencyPoid() != null) {
+                    Currency currency = currencyRepository.findByCurrencyPoid(company.getCurrencyPoid());
+                    if (currency != null) {
+                        company.setCurrencyDetails(new CurrencyDetails(currency.getCurrencyPoid(), currency.getCurrencyCode(),
+                            currency.getCurrencyName(), currency.getCurrencyName2() , currency.getCoinShortName(), currency.getCurrencyShortName(), currency.getActive(),
+                            currency.getDecimals()));
+                    }
+                }
+
                 if (company.getLogoImage() != null) {
                     company.setLogoImageBase64(convertToThumbnail(company.getLogoImage()));
                 }
@@ -621,6 +631,14 @@ public class AuthService {
                 TimeZoneEntity timeZoneEntity = timeZoneRepository.findByTimezoneId(company.getTimezoneId());
                 TimeZoneDto timeZoneDto = timeZoneEntity != null ? new TimeZoneDto(timeZoneEntity.getTimezoneId(), timeZoneEntity.getTimezoneCode(), timeZoneEntity.getTimezoneName()) : null;
                 company.setTimeZone(timeZoneDto);
+            }
+
+            if (company.getCurrencyPoid() != null) {
+                Currency currency = currencyRepository.findByCurrencyPoid(company.getCurrencyPoid());
+                if (currency != null) {
+                    company.setCurrencyDetails(new CurrencyDetails(currency.getCurrencyPoid(), currency.getCurrencyCode(),
+                        currency.getCurrencyName(),currency.getCurrencyName2(),currency.getCoinShortName(), currency.getCurrencyShortName(),currency.getActive(), currency.getDecimals()));
+                }
             }
 
             String countryCode = getCountryCodeForCompany(company.getCompanyPoid());
