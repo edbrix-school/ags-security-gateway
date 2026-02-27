@@ -12,7 +12,8 @@ import java.util.List;
 @Repository
 public interface UsersCompanyRepository extends JpaRepository<UsersCompanyEntity, Long> {
 
-    @Query("SELECT  c " +
-            "FROM UsersCompanyEntity c WHERE c.id.userPoid = :userPoid")
+    @Query("SELECT c FROM UsersCompanyEntity c " +
+            "JOIN Company comp ON c.id.companyPoid = comp.companyPoid " +
+            "WHERE c.id.userPoid = :userPoid AND (comp.active = 'Y' OR comp.active IS NULL) AND (comp.deleted = 'N' OR comp.deleted IS NULL)")
     List<UsersCompanyEntity> findCompanyAccess(@Param("userPoid") Long userPoid);
 }
