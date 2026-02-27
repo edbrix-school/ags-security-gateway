@@ -10,6 +10,7 @@ import lombok.Data;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import com.asg.security.gateway.dto.CurrencyDetails;
 
 @Entity
 @Table(name = "GLOBAL_COMPANY_MASTER")
@@ -227,5 +228,8 @@ public class Company {
 
     @Column(name = "SUBMISSION_PERIOD")
     private Long submissionPeriod;
+
+    @Transient  //doesnt map to field in db
+    private CurrencyDetails currencyDetails;
 
 }
