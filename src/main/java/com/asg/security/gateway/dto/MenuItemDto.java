@@ -19,6 +19,7 @@ public class MenuItemDto {
     private String docType;
     private String moduleId;
     private String hideInMainMenu;
+    private String routeName;
     private List<MenuItemDto> children = new ArrayList<>(); // ✅ Prevents null
 
 }

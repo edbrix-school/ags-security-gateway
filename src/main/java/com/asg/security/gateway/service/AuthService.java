@@ -581,6 +581,7 @@ public class AuthService {
                 (String) row[6], // DOC_TYPE
                 (String) row[7], // MODULE_ID
                 row[8] != null ? row[8].toString() : null, // HIDE_IN_MAIN_MENU
+                (String) row[9], // ROUTE_NAME
                 new ArrayList<>()
         )).collect(Collectors.toList());
 
