@@ -68,7 +68,7 @@ public class AuthService {
     private final JdbcTemplate jdbcTemplate;
     private final LoginFailureService loginFailureService;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public AuthenticationResponse login(LoginRequest request) {
         String sanitizedUserId = request.getUserId().trim();
         log.info("Login attempt for user: {}", sanitizedUserId);
@@ -483,7 +483,7 @@ public class AuthService {
         return (int) count;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<Company> getCompanies(Long userPoid) {
         try {
             List<UsersCompanyEntity> companyList = usersCompanyRepository.findCompanyAccess(userPoid);
