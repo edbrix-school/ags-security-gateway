@@ -130,7 +130,7 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
         if (needsFinancialCheck) {
             Long companyPoid = UserContext.getCompanyPoid();
             if (companyPoid == null) {
-                return writeError(response, HttpStatus.UNAUTHORIZED, "Company context is missing");
+                return writeError(response, HttpStatus.BAD_REQUEST, "Company context is missing");
             }
             Company company = companyRepository.findByCompanyPoid(companyPoid);
             if (company == null) {
@@ -142,7 +142,7 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
             if (info.isGlDocument()
                     && !isWithinPeriod(txDate, info.getTransPeriodStart(), info.getTransPeriodEnd())) {
                 log.warn("Transaction period violation: docId={}, txDate={}", documentId, txDate);
-                return writeError(response, HttpStatus.FORBIDDEN,
+                return writeError(response, HttpStatus.BAD_REQUEST,
                         "Transaction date " + txDate + " is outside the transaction period ("
                                 + toLocalDate(info.getTransPeriodStart()) + " to "
                                 + toLocalDate(info.getTransPeriodEnd()) + "). "
@@ -151,7 +151,7 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
 
             if (!isWithinPeriod(txDate, company.getFinancialPeriodStart(), company.getFinancialPeriodEnd())) {
                 log.warn("Financial period violation: docId={}, companyPoid={}, txDate={}", documentId, companyPoid, txDate);
-                return writeError(response, HttpStatus.FORBIDDEN,
+                return writeError(response, HttpStatus.BAD_REQUEST,
                         "Transaction date " + txDate + " is outside the financial period ("
                         + toLocalDate(company.getFinancialPeriodStart()) + " to "
                         + toLocalDate(company.getFinancialPeriodEnd()) + ")");
@@ -163,7 +163,7 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
         if (info.isInventoryDocument()) {
             if (!isWithinPeriod(txDate, info.getStockPeriodStart(), info.getStockPeriodEnd())) {
                 log.warn("Stock period violation: docId={}, txDate={}", documentId, txDate);
-                return writeError(response, HttpStatus.FORBIDDEN,
+                return writeError(response, HttpStatus.BAD_REQUEST,
                         "Transaction date " + txDate + " is outside the inventory (stock) period ("
                         + toLocalDate(info.getStockPeriodStart()) + " to "
                         + toLocalDate(info.getStockPeriodEnd()) + "). "
