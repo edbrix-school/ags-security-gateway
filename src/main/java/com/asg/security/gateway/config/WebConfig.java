@@ -1,5 +1,6 @@
 package com.asg.security.gateway.config;
 
+import com.asg.security.gateway.filter.FinancialDateValidationInterceptor;
 import com.asg.security.gateway.filter.RBACInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private RBACInterceptor rbacInterceptor;
 
+    @Autowired
+    private FinancialDateValidationInterceptor financialDateValidationInterceptor;
+
     @Value("#{'${rbac.validate.services}'.split(',')}")
     private List<String> rbacServicesToValidate;
 
@@ -28,5 +32,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/asg/settings/api/v1/document/searchable-fields/**",
                         "/asg/finance/api/v1/billwise-breakup/**"
                 );
+
+        // Runs on ALL APIs — reads transactionDate from JSON body and validates
+        // against company period. Self-skips when body has no transactionDate field.
+        registry.addInterceptor(financialDateValidationInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/api/v1/auth/**", "/actuator/**", "/swagger-ui/**", "/v3/api-docs/**");
     }
 }
