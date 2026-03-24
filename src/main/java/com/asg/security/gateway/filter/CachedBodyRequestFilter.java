@@ -20,11 +20,15 @@ public class CachedBodyRequestFilter implements Filter {
             throws IOException, ServletException {
         if (request instanceof HttpServletRequest httpRequest) {
             String contentType = httpRequest.getContentType();
-            // Cache the body for multipart requests before Spring's multipart resolver consumes it
-            if (contentType != null && contentType.toLowerCase().startsWith("multipart/")) {
-                CachedBodyHttpServletRequest cachedBodyRequest = new CachedBodyHttpServletRequest(httpRequest);
-                chain.doFilter(cachedBodyRequest, response);
-                return;
+            if (contentType != null) {
+                String ct = contentType.toLowerCase();
+                // Cache multipart and JSON bodies so they can be read multiple times
+                // (once by the interceptor, once by the downstream controller/proxy)
+                if (ct.startsWith("multipart/") || ct.contains("application/json")) {
+                    CachedBodyHttpServletRequest cachedBodyRequest = new CachedBodyHttpServletRequest(httpRequest);
+                    chain.doFilter(cachedBodyRequest, response);
+                    return;
+                }
             }
         }
         chain.doFilter(request, response);
