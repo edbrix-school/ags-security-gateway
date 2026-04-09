@@ -60,7 +60,7 @@ public class MenuRepository {
                           )
                         UNION ALL
                         -- LEVEL 2: Documents / Reports
-                        SELECT DISTINCT DM.DOC_ID AS MENU_ID, DM.DOC_SHORT_NAME AS MENU_NAME, 2 MENU_LEVEL, 
+                      SELECT DISTINCT DM.DOC_ID AS MENU_ID, DM.DOC_SHORT_NAME AS MENU_NAME, 2 MENU_LEVEL,
                                         TO_CHAR(MM.MODULE_ID + DT.CONST_NO) AS MENU_GROUP, TASKFLOW_URL, 
                                         UPPER(UM.USER_ID) USER_ID, DM.DOC_TYPE, DM.MODULE_ID, DM.SEQNO, NVL(DM.HIDE_IN_MAIN_MENU,'N') HIDE_IN_MAIN_MENU, DM.ROUTE_NAME
                         FROM GLOBAL_DOC_MASTER DM
