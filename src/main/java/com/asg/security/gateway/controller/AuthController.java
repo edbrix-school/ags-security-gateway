@@ -1,11 +1,13 @@
 package com.asg.security.gateway.controller;
 
+import com.asg.security.gateway.config.RestrictionConfig;
 import com.asg.security.gateway.dto.*;
 import com.asg.security.gateway.entity.Company;
 import com.asg.security.gateway.exception.AsgException;
 import com.asg.security.gateway.exception.AzureAuthenticationException;
 import com.asg.security.gateway.model.*;
 import com.asg.security.gateway.service.AuthService;
+import com.asg.security.gateway.service.HRPayRollService;
 import com.asg.security.gateway.service.PermissionService;
 import com.asg.security.gateway.util.ApiResponse;
 import com.asg.security.gateway.util.UserContext;
@@ -14,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.asg.security.gateway.util.ApiResponse.*;
 
@@ -32,8 +36,13 @@ import static com.asg.security.gateway.util.ApiResponse.*;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    @Value("${app.name:UNKNOWN}")
+    private String appName;
+
     private final AuthService authService;
     private final PermissionService permissionService;
+    private final HRPayRollService hrPayRollService;
+    private final RestrictionConfig restrictionConfig;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -184,6 +193,17 @@ public class AuthController {
         } catch (Exception ex) {
             return internalServerError("Failed to fetch permissions ->  " + ex.getMessage());
         }
+    }
+
+    @GetMapping("/syncData")
+    public ResponseEntity<?> SyncHRDataAction() {
+        if (!Optional.ofNullable(restrictionConfig.getAllowedApp()).orElse("").equalsIgnoreCase(appName)) {
+            return ApiResponse.unauthorized(
+                    "Access denied. This API is restricted to Payroll application only."
+            );
+        }
+        String response = hrPayRollService.SyncHRDataAction();
+        return success(response, null);
     }
 
 }
