@@ -196,7 +196,7 @@ public class AuthController {
     }
 
     @GetMapping("/syncData")
-    public ResponseEntity<?> SyncHRDataAction() {
+    public ResponseEntity<?> syncHRDataAction() {
         if (!Optional.ofNullable(restrictionConfig.getAllowedApp()).orElse("").equalsIgnoreCase(appName)) {
             return ApiResponse.unauthorized(
                     "Access denied. This API is restricted to Payroll application only."
