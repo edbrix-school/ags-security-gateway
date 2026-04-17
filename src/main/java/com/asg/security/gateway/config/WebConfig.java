@@ -30,7 +30,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/asg/settings/api/v1/task-category/subcategories/**",
                         "/asg/settings/api/v1/document/details",
                         "/asg/settings/api/v1/document/searchable-fields/**",
-                        "/asg/finance/api/v1/billwise-breakup/**"
+                        "/asg/finance/api/v1/billwise-breakup/**",
+                        "/asg/finance/api/v1/common/**"
                 );
 
         // Runs on ALL APIs — reads transactionDate from JSON body and validates
