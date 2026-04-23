@@ -27,6 +27,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(rbacInterceptor)
                 .addPathPatterns(rbacServicesToValidate)
                 .excludePathPatterns(
+                        "/asg/finance/api/ws",
+                        "/asg/finance/api/ws/**",
+                        "/asg/finance/api/websocket",
+                        "/asg/finance/api/websocket/**",
                         "/asg/settings/api/v1/task-category/subcategories/**",
                         "/asg/settings/api/v1/document/details",
                         "/asg/settings/api/v1/document/searchable-fields/**",
@@ -38,6 +42,15 @@ public class WebConfig implements WebMvcConfigurer {
         // against company period. Self-skips when body has no transactionDate field.
         registry.addInterceptor(financialDateValidationInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/api/v1/auth/**", "/actuator/**", "/swagger-ui/**", "/v3/api-docs/**");
+                .excludePathPatterns(
+                        "/api/v1/auth/**",
+                        "/actuator/**",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/asg/finance/api/ws",
+                        "/asg/finance/api/ws/**",
+                        "/asg/finance/api/websocket",
+                        "/asg/finance/api/websocket/**"
+                );
     }
 }

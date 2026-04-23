@@ -31,7 +31,7 @@ public class ProxyController {
         this.objectMapper = new ObjectMapper();
     }
 
-    @RequestMapping("/asg/{service}/api/**")
+    @RequestMapping(value = "/asg/{service}/api/**", headers = "Upgrade!=websocket")
     public ResponseEntity<?> proxy(@PathVariable("service") String service,
                                    HttpServletRequest request,
                                    @RequestBody(required = false) byte[] body) throws IOException {
@@ -86,4 +86,3 @@ public class ProxyController {
         }
     }
 }
-
