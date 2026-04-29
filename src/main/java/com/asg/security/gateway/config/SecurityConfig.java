@@ -53,7 +53,12 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/v3/api-docs.yaml",
                                 "/swagger-resources/**",
-                                "/webjars/**"
+                                "/webjars/**",
+                                "/asg/finance/api/ws",
+                                "/asg/finance/api/ws/**",
+                                "/asg/finance/api/websocket",
+                                "/asg/finance/api/websocket/**",
+                                "/asg/finance/api/v1/telex-progress/*/stream"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
@@ -89,4 +94,3 @@ public class SecurityConfig {
         return source;
     }
 }
-
