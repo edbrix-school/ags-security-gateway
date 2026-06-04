@@ -42,8 +42,7 @@ public class CorsConfig {
             "Authorization",
             "Content-Type",
             "X-Group-Poid",
-            "X-User-Id",
-            "Content-Disposition"
+            "X-User-Id"
         ));
         
         // Cache preflight requests for 1 hour
