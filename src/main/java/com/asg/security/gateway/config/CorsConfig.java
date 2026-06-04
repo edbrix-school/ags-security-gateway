@@ -25,10 +25,7 @@ public class CorsConfig {
             "http://localhost:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            "https://erpdev.shippingbahrain.com",
-            "https://erpqa.shippingbahrain.com",
-            "https://erpuat.shippingbahrain.com"
+            "http://127.0.0.1:3001"
         ));
         
         // Allow all HTTP methods
@@ -42,8 +39,7 @@ public class CorsConfig {
             "Authorization",
             "Content-Type",
             "X-Group-Poid",
-            "X-User-Id",
-            "Content-Disposition"
+            "X-User-Id"
         ));
         
         // Cache preflight requests for 1 hour
