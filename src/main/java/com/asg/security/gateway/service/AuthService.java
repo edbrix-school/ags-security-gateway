@@ -61,7 +61,7 @@ public class AuthService {
     private final CompanyRepository companyRepository;
     private final StateRepository stateRepository;
     private final TimeZoneRepository timeZoneRepository;
-    private final MenuRepository menuRepository;
+    private final MenuCacheService menuCacheService;
     private final CompanyDivisionRepository companyDivisionRepository;
     private final CurrencyRepository currencyRepository;
 
@@ -569,55 +569,7 @@ public class AuthService {
     }
 
     public List<MenuItemDto> getUserMenu(Long userPoid) {
-        List<Object[]> results = menuRepository.findMenuItemsByUserPoid(userPoid);
-
-        List<MenuItemDto> menuItems = results.stream().map(row -> new MenuItemDto(
-                (String) row[0], // MENU_ID
-                (String) row[1], // MENU_NAME
-                ((Number) row[2]).intValue(), // MENU_LEVEL
-                (String) row[3], // MENU_GROUP
-                (String) row[4], // TASKFLOW_URL
-                (String) row[5], // USER_ID
-                (String) row[6], // DOC_TYPE
-                (String) row[7], // MODULE_ID
-                row[8] != null ? row[8].toString() : null, // HIDE_IN_MAIN_MENU
-                (String) row[9], // ROUTE_NAME
-                new ArrayList<>()
-        )).collect(Collectors.toList());
-
-        return buildMenuHierarchy(menuItems);
-    }
-
-    private List<MenuItemDto> buildMenuHierarchy(List<MenuItemDto> menuItems) {
-
-        // Step 1: Group by level
-        Map<Integer, List<MenuItemDto>> levels = menuItems.stream()
-                .collect(Collectors.groupingBy(MenuItemDto::getMenuLevel));
-
-        List<MenuItemDto> level0 = levels.getOrDefault(0, List.of());
-        List<MenuItemDto> level1 = levels.getOrDefault(1, List.of());
-        List<MenuItemDto> level2 = levels.getOrDefault(2, List.of());
-
-        // Step 2: Map level 1 by menuGroup
-        Map<String, List<MenuItemDto>> level1Map = level1.stream()
-                .collect(Collectors.groupingBy(MenuItemDto::getMenuGroup));
-
-        Map<String, List<MenuItemDto>> level2Map = level2.stream()
-                .collect(Collectors.groupingBy(MenuItemDto::getMenuGroup));
-
-        // Step 3: Attach level 2 to level 1
-        for (MenuItemDto l1 : level1) {
-            List<MenuItemDto> children = level2Map.getOrDefault(l1.getMenuId(), List.of());
-            l1.getChildren().addAll(children);
-        }
-
-        // Step 4: Attach level 1 to level 0
-        for (MenuItemDto l0 : level0) {
-            List<MenuItemDto> children = level1Map.getOrDefault(l0.getMenuId(), List.of());
-            l0.getChildren().addAll(children);
-        }
-
-        return level0;
+        return menuCacheService.getMenus(userPoid);
     }
 
     public Company getCompany(Long companyId) {
