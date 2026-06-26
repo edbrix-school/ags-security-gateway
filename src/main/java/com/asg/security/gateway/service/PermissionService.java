@@ -2,7 +2,6 @@ package com.asg.security.gateway.service;
 
 import com.asg.security.gateway.dto.PermissionDto;
 import com.asg.security.gateway.enums.UserRolesRightsEnum;
-import com.asg.security.gateway.repository.PermissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +14,11 @@ import java.util.Set;
 public class PermissionService {
 
     @Autowired
-    private PermissionRepository permissionRepository;
+    private PermissionCacheService permissionCacheService;
 
-    // Get all user permissions
+    // Get all user permissions (served from cache; refreshed every 5 min, idle-evicted after 30 min)
     public List<PermissionDto> getUserPermissions(String userId) throws SQLException {
-        return permissionRepository.getUserPermissions(userId);
+        return permissionCacheService.getPermissions(userId);
     }
 
     // For Interceptor
