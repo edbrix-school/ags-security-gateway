@@ -18,10 +18,21 @@ import org.springframework.web.client.RestClientException;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 public class ProxyController {
+
+    // Hop-by-hop headers (RFC 7230 §6.1) plus Content-Length: these describe the
+    // downstream connection, not the payload, and must not be copied to the client.
+    // The response body is fully buffered, so the container recomputes the correct
+    // Content-Length / Transfer-Encoding. Copying them verbatim produces duplicate
+    // Transfer-Encoding headers, which nginx rejects with a 502.
+    private static final Set<String> HOP_BY_HOP_HEADERS = Set.of(
+            "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
+            "te", "trailer", "transfer-encoding", "upgrade", "content-length");
 
     private final RoutingService routingService;
     private final ObjectMapper objectMapper;
@@ -49,7 +60,11 @@ public class ProxyController {
         try {
             ResponseEntity<byte[]> response = routingService.forward(service, request, requestBody);
             HttpHeaders headers = new HttpHeaders();
-            response.getHeaders().forEach((key, values) -> headers.put(key, List.copyOf(values)));
+            response.getHeaders().forEach((key, values) -> {
+                if (!HOP_BY_HOP_HEADERS.contains(key.toLowerCase(Locale.ROOT))) {
+                    headers.put(key, List.copyOf(values));
+                }
+            });
             return new ResponseEntity<>(response.getBody(), headers, response.getStatusCode());
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
             // Parse the downstream service's response body as JSON and return it as-is
