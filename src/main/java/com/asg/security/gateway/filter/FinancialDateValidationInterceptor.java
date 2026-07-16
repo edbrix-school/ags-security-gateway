@@ -44,18 +44,17 @@ import java.util.Set;
  *
  *  DOC_TYPE gate — Masters documents are never period-restricted.
  *
+ *  Transaction period — EDIT / DELETE on every Transactions document, GL or not;
+ *                       CREATE on GL Transactions only. SOFT at gateway (override via
+ *                       PROC_GLOBAL_DOC_EDIT_RIGHT_GET is handled downstream in
+ *                       common-services), so an out-of-period date is rejected here
+ *                       but the service may still permit it via temporary edit rights.
+ *
  *  GL documents (GL_POSTING = Y):
- *    • Financial period  — STRICT, no override.  Outside → 403.
- *    • Transaction period — SOFT at gateway (override via PROC_GLOBAL_DOC_EDIT_RIGHT_GET
- *                           is handled downstream in common-services). Outside → 403 here
- *                           but service may still permit via temporary edit rights.
+ *    • Financial period — STRICT, no override. Outside → rejected.
  *
  *  Inventory documents (INVENTORY_DOCUMENT = Y):
- *    • Stock period — same soft pattern as transaction period above.
- *
- *  Non-GL, Non-Inventory Transactions:
- *    • Legacy only shows a WARNING (not a hard block) for transaction period.
- *    • Gateway passes these through — the downstream save handles the warning.
+ *    • Stock period — same soft pattern as the transaction period above.
  *
  *  No {@code transactionDate} in body → always passes (master data, non-dated endpoints).
  */
@@ -68,6 +67,10 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
     static final String ACTION_HEADER          = "X-Action-Requested";
 
     private static final String DOC_TYPE_TRANSACTIONS = "Transactions";
+
+    /** Shown for EDIT / DELETE outside the transaction period. */
+    private static final String TRANSACTION_PERIOD_MESSAGE =
+            "Changes allowed only within current Transaction Period";
 
     private static final Set<String> DATE_VALIDATED_ACTIONS = Set.of(
             UserRolesRightsEnum.CREATE.name(),
@@ -113,18 +116,36 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // Non-GL, non-inventory Transactions: legacy only warns, never hard-blocks at this stage
+        boolean isCreate = UserRolesRightsEnum.CREATE.name().equalsIgnoreCase(action);
+
+        // 4. Transaction period — dates come from PROC_GLOB_DOC_MASTER_VAL_LOAD.
+        //      EDIT / DELETE → any Transactions document, GL or not
+        //      CREATE        → GL Transactions only (unchanged from the legacy rule)
+        boolean needsTransactionCheck = !isCreate || info.isGlDocument();
+
+        if (needsTransactionCheck
+                && !isWithinPeriod(txDate, info.getTransPeriodStart(), info.getTransPeriodEnd())) {
+            log.warn("Transaction period violation: docId={}, action={}, txDate={}", documentId, action, txDate);
+            String message = isCreate
+                    ? "Transaction date " + txDate + " is outside the transaction period ("
+                            + toLocalDate(info.getTransPeriodStart()) + " to "
+                            + toLocalDate(info.getTransPeriodEnd()) + "). "
+                            + "Contact your administrator for temporary edit rights if this entry is valid."
+                    : TRANSACTION_PERIOD_MESSAGE;
+            return writeError(response, HttpStatus.BAD_REQUEST, message);
+        }
+
+        // Non-GL, non-inventory Transactions have no financial or stock period restrictions
         if (!info.isGlDocument() && !info.isInventoryDocument()) {
-            log.debug("Non-GL/non-inventory transaction — period check skipped at gateway: docId={}", documentId);
+            log.debug("Non-GL/non-inventory transaction — no further period checks: docId={}", documentId);
             return true;
         }
 
-        // 4. Financial period — loaded from GLOBAL_COMPANY_MASTER (not returned by the proc)
+        // 5. Financial period — loaded from GLOBAL_COMPANY_MASTER (not returned by the proc)
         //
         //    Legacy rule (IsThisDateWithinValidFinancialPeriod):
         //      CREATE  → all Transactions (no GLDocument gate)
         //      EDIT / DELETE → GL Transactions only
-        boolean isCreate = UserRolesRightsEnum.CREATE.name().equalsIgnoreCase(action);
         boolean needsFinancialCheck = isCreate || info.isGlDocument();
 
         if (needsFinancialCheck) {
@@ -138,17 +159,6 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
                         "Company not found for companyPoid: " + companyPoid);
             }
 
-            // Transaction period: from PROC_GLOB_DOC_MASTER_VAL_LOAD — GL docs only
-            if (info.isGlDocument()
-                    && !isWithinPeriod(txDate, info.getTransPeriodStart(), info.getTransPeriodEnd())) {
-                log.warn("Transaction period violation: docId={}, txDate={}", documentId, txDate);
-                return writeError(response, HttpStatus.BAD_REQUEST,
-                        "Transaction date " + txDate + " is outside the transaction period ("
-                                + toLocalDate(info.getTransPeriodStart()) + " to "
-                                + toLocalDate(info.getTransPeriodEnd()) + "). "
-                                + "Contact your administrator for temporary edit rights if this entry is valid.");
-            }
-
             if (!isWithinPeriod(txDate, company.getFinancialPeriodStart(), company.getFinancialPeriodEnd())) {
                 log.warn("Financial period violation: docId={}, companyPoid={}, txDate={}", documentId, companyPoid, txDate);
                 return writeError(response, HttpStatus.BAD_REQUEST,
@@ -159,7 +169,7 @@ public class FinancialDateValidationInterceptor implements HandlerInterceptor {
 
         }
 
-        // 5. Inventory document — stock period (from proc)
+        // 6. Inventory document — stock period (from proc)
         if (info.isInventoryDocument()) {
             if (!isWithinPeriod(txDate, info.getStockPeriodStart(), info.getStockPeriodEnd())) {
                 log.warn("Stock period violation: docId={}, txDate={}", documentId, txDate);
