@@ -34,6 +34,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/asg/settings/api/v1/task-category/subcategories/**",
                         "/asg/settings/api/v1/document/details",
                         "/asg/settings/api/v1/document/searchable-fields/**",
+                        "/asg/settings/api/v1/document/*/grant-edit-permission/status",
+                        "/asg/settings/api/v1/document/*/grant-edit-permission",
                         "/asg/finance/api/v1/billwise-breakup/**",
                         "/asg/finance/api/v1/common/**"
                 );
