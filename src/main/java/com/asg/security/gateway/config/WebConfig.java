@@ -37,7 +37,12 @@ public class WebConfig implements WebMvcConfigurer {
                         "/asg/settings/api/v1/document/*/grant-edit-permission/status",
                         "/asg/settings/api/v1/document/*/grant-edit-permission",
                         "/asg/finance/api/v1/billwise-breakup/**",
-                        "/asg/finance/api/v1/common/**"
+                        "/asg/finance/api/v1/common/**",
+                        // Shared ISO LOVs: called from Risk & Opportunities, CAR, Quality
+                        // Objectives, ... so each caller sends its own X-Document-Id. A
+                        // docid.api.mappings entry would pin them to one screen's doc id and
+                        // reject the rest; the endpoints scope their own data to the logged-in PIC.
+                        "/asg/admin-iso/api/v1/iso-lov/**"
                 );
 
         // Runs on ALL APIs — reads transactionDate from JSON body and validates
