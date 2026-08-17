@@ -42,7 +42,13 @@ public class WebConfig implements WebMvcConfigurer {
                         // Objectives, ... so each caller sends its own X-Document-Id. A
                         // docid.api.mappings entry would pin them to one screen's doc id and
                         // reject the rest; the endpoints scope their own data to the logged-in PIC.
-                        "/asg/admin-iso/api/v1/iso-lov/**"
+                        "/asg/admin-iso/api/v1/iso-lov/**",
+                        // Shared HR endpoints, same reason: current-employee is called from leave
+                        // request, resignation, personal data sheet, ... each with its own doc id.
+                        // The endpoint reads the caller's rights itself through
+                        // PROC_GLOB_USR_RIGHTS_APPSTART and gives a user without Edit on the screen
+                        // they are on nothing but their own employee.
+                        "/asg/hr/api/v1/common/**"
                 );
 
         // Runs on ALL APIs — reads transactionDate from JSON body and validates
