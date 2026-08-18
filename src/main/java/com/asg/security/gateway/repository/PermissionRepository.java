@@ -11,6 +11,7 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,23 +28,27 @@ public class PermissionRepository {
 
         List<PermissionDto> permissions = new ArrayList<>();
 
-        try (Connection conn = dataSource.getConnection();
-             CallableStatement cs = conn.prepareCall(sql)) {
+        try (Connection conn = dataSource.getConnection()) {
+            // Postgres refcursors only live for the duration of the transaction that opened them
+            conn.setAutoCommit(false);
 
-            cs.setString(1, userId);
-            cs.registerOutParameter(2, oracle.jdbc.OracleTypes.CURSOR); // Oracle-specific
+            try (CallableStatement cs = conn.prepareCall(sql)) {
+                cs.setString(1, userId);
+                cs.registerOutParameter(2, Types.OTHER); // REF_CURSOR
 
-            cs.execute();
+                cs.execute();
 
-            try (ResultSet rs = (ResultSet) cs.getObject(2)) {
-                while (rs.next()) {
-                    String userPoid = rs.getString("USER_POID");
-                    String docId    = rs.getString("DOC_ID");
-                    String rights   = rs.getString("RIGHTS");
+                try (ResultSet rs = (ResultSet) cs.getObject(2)) {
+                    while (rs.next()) {
+                        String userPoid = rs.getString("USER_POID");
+                        String docId    = rs.getString("DOC_ID");
+                        String rights   = rs.getString("RIGHTS");
 
-                    permissions.add(new PermissionDto(userPoid, docId, rights));
+                        permissions.add(new PermissionDto(userPoid, docId, rights));
+                    }
                 }
             }
+            conn.commit();
         }
         catch (SQLException e) {
             log.error("Error while calling stored procedure PROC_GLOB_USR_RIGHTS_APPSTART", e);
