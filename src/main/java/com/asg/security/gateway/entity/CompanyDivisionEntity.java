@@ -33,7 +33,6 @@ public class CompanyDivisionEntity {
     @Column(name = "LASTMODIFIED_DATE")
     private LocalDateTime lastModifiedDate;
 
-    @Lob
     @Column(name = "COMPANY_DIV_LOGO")
     private byte[] companyDivLogo;
 
