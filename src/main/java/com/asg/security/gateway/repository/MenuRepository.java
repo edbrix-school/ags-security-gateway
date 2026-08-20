@@ -40,7 +40,7 @@ public class MenuRepository {
                           )
                         UNION ALL
                         -- LEVEL 1: Document Types
-                        SELECT DISTINCT (MM.MODULE_ID + DT.CONST_NO)::text MENU_ID, DT.CONST_NAME MENU_NAME, 1 MENU_LEVEL,
+                        SELECT DISTINCT (MM.MODULE_ID::numeric + DT.CONST_NO)::text MENU_ID, DT.CONST_NAME MENU_NAME, 1 MENU_LEVEL,
                                         MM.MODULE_ID MENU_GROUP, '' TASKFLOW_URL, UPPER(UM.USER_ID) USER_ID, '' DOC_TYPE, DM.MODULE_ID, MM.SEQNO, NULL HIDE_IN_MAIN_MENU, NULL ROUTE_NAME
                         FROM GLOBAL_MODULE_MASTER MM
                         INNER JOIN GLOBAL_DOC_MASTER DM
@@ -61,7 +61,7 @@ public class MenuRepository {
                         UNION ALL
                         -- LEVEL 2: Documents / Reports
                       SELECT DISTINCT DM.DOC_ID AS MENU_ID, DM.DOC_SHORT_NAME AS MENU_NAME, 2 MENU_LEVEL,
-                                        (MM.MODULE_ID + DT.CONST_NO)::text AS MENU_GROUP, TASKFLOW_URL,
+                                        (MM.MODULE_ID::numeric + DT.CONST_NO)::text AS MENU_GROUP, TASKFLOW_URL,
                                         UPPER(UM.USER_ID) USER_ID, DM.DOC_TYPE, DM.MODULE_ID, DM.SEQNO, COALESCE(DM.HIDE_IN_MAIN_MENU,'N') HIDE_IN_MAIN_MENU, DM.ROUTE_NAME
                         FROM GLOBAL_DOC_MASTER DM
                         INNER JOIN GLOBAL_MODULE_MASTER MM ON DM.MODULE_ID = MM.MODULE_ID
@@ -71,7 +71,7 @@ public class MenuRepository {
                         INNER JOIN GLOBAL_USERS UM ON UM.USER_POID = UR.USER_POID
                         WHERE UR.USER_POID = ?1 AND DOC_TYPE <> 'Dashboards' AND STRPOS(COALESCE(RD.RIGHTS,'000000'), '1') > 0
                           AND COALESCE(DM.ACTIVE,'Y') = 'Y'
-                  )
+                  ) m
                   ORDER BY SEQNO
                 """;
 

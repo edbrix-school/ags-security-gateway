@@ -185,7 +185,6 @@ public class Company {
     @Transient  //doesnt map to field in db
     private String stateName;
 
-    @Lob
     @Column(name = "LOGO_IMAGE")
     private byte[] logoImage;
 

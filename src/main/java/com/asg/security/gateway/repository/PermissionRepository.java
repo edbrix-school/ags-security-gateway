@@ -7,11 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
-import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,28 +24,34 @@ public class PermissionRepository {
     private static final Logger log = LoggerFactory.getLogger(PermissionRepository.class);
 
     public List<PermissionDto> getUserPermissions(String userId) throws SQLException {
-        String sql = "{ CALL PROC_GLOB_USR_RIGHTS_APPSTART(?, ?) }";
-
         List<PermissionDto> permissions = new ArrayList<>();
 
         try (Connection conn = dataSource.getConnection()) {
             // Postgres refcursors only live for the duration of the transaction that opened them
             conn.setAutoCommit(false);
 
-            try (CallableStatement cs = conn.prepareCall(sql)) {
-                cs.setString(1, userId);
-                cs.registerOutParameter(2, Types.OTHER); // REF_CURSOR
+            // PROC_GLOB_USR_RIGHTS_APPSTART's refcursor OUT param is second, not first — pgjdbc's
+            // CallableStatement.registerOutParameter only supports REF_CURSOR in position one, so
+            // it silently drops this one instead of binding it. Calling the procedure as a plain
+            // CALL query sidesteps that limitation entirely: Postgres returns INOUT values (here,
+            // the cursor's name) as a one-row ResultSet, which we then FETCH from separately.
+            String cursorName;
+            try (PreparedStatement ps = conn.prepareStatement("CALL PROC_GLOB_USR_RIGHTS_APPSTART(?, NULL)")) {
+                ps.setString(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    cursorName = rs.getString(1);
+                }
+            }
 
-                cs.execute();
+            try (Statement fetchStmt = conn.createStatement();
+                 ResultSet rs = fetchStmt.executeQuery("FETCH ALL FROM \"" + cursorName + "\"")) {
+                while (rs.next()) {
+                    String userPoid = rs.getString("USER_POID");
+                    String docId    = rs.getString("DOC_ID");
+                    String rights   = rs.getString("RIGHTS");
 
-                try (ResultSet rs = (ResultSet) cs.getObject(2)) {
-                    while (rs.next()) {
-                        String userPoid = rs.getString("USER_POID");
-                        String docId    = rs.getString("DOC_ID");
-                        String rights   = rs.getString("RIGHTS");
-
-                        permissions.add(new PermissionDto(userPoid, docId, rights));
-                    }
+                    permissions.add(new PermissionDto(userPoid, docId, rights));
                 }
             }
             conn.commit();
